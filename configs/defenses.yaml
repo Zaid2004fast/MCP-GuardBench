@@ -1,0 +1,31 @@
+# Defense configurations. `none` is the undefended baseline (MSB setting).
+# Baselines from prior work:  safety_prompt (MCP-SafetyBench), llm_guard (MCIP, evaluated in MSB).
+# Proposed system-level mitigations (Phase 2 ablation): allowlist, scoped, hitl, and combinations.
+
+none: {}
+
+safety_prompt:
+  safety_prompt: true
+
+llm_guard:
+  llm_guard: true
+
+allowlist:
+  allowlist: true
+
+scoped:
+  scoped_credentials: true
+
+hitl:
+  hitl: true
+  hitl_approver: oracle
+
+allowlist+scoped:
+  allowlist: true
+  scoped_credentials: true
+
+full:
+  allowlist: true
+  scoped_credentials: true
+  hitl: true
+  hitl_approver: oracle

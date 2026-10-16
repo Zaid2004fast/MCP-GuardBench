@@ -1,0 +1,52 @@
+[
+  {
+    "server": "files",
+    "name": "list_files",
+    "sha": "bb35e11e2867c3a8"
+  },
+  {
+    "server": "files",
+    "name": "read_file",
+    "sha": "04ff7a2add8afc04"
+  },
+  {
+    "server": "files",
+    "name": "write_file",
+    "sha": "907b4f71d77d1c2c"
+  },
+  {
+    "server": "files",
+    "name": "delete_file",
+    "sha": "4b5176f6f718816a"
+  },
+  {
+    "server": "mail",
+    "name": "list_inbox",
+    "sha": "f6507242af4aa88c"
+  },
+  {
+    "server": "mail",
+    "name": "read_email",
+    "sha": "eab9b00c5a5f436c"
+  },
+  {
+    "server": "mail",
+    "name": "send_email",
+    "sha": "dad9ad8fc50d1e50"
+  },
+  {
+    "server": "bank",
+    "name": "get_balance",
+    "sha": "8b3d742fddfee284"
+  },
+  {
+    "server": "bank",
+    "name": "list_transactions",
+    "sha": "2e264f67fc4b9e1d"
+  },
+  {
+    "server": "bank",
+    "name": "transfer_funds",
+    "sha": "fef5da8561c8db0c"
+  }
+]
