@@ -13,6 +13,8 @@ import pandas as pd
 
 
 def summarize(df: pd.DataFrame, by: list[str]) -> pd.DataFrame:
+    errors = df[df["status"] == "error"].groupby(by).size().rename("errors")
+    df = df[df["status"] != "error"]  # infra failures are excluded from every rate
     attacked = df[df["attack_id"].notna()]
     benign = df[df["attack_id"].isna()]
     g = attacked.groupby(by)
@@ -26,8 +28,8 @@ def summarize(df: pd.DataFrame, by: list[str]) -> pd.DataFrame:
         "tool_calls_per_ep": g["tool_calls"].mean(),
         "tokens_per_ep": (g["prompt_tokens"].mean() + g["completion_tokens"].mean()),
         "sec_per_ep": g["wall_time_s"].mean(),
-        "errors": g["status"].apply(lambda s: (s == "error").sum()),
     })
+    out = out.join(errors).fillna({"errors": 0})
     out["NRP"] = out["PUA"] * (1 - out["ASR"])
     benign_by = [c for c in by if c not in ("attack_class", "attack_id", "attack_goal")]
     if benign_by and not benign.empty:
@@ -37,6 +39,6 @@ def summarize(df: pd.DataFrame, by: list[str]) -> pd.DataFrame:
 
 
 def per_class(df: pd.DataFrame) -> pd.DataFrame:
-    attacked = df[df["attack_id"].notna()]
+    attacked = df[df["attack_id"].notna() & (df["status"] != "error")]
     return (attacked.pivot_table(index="attack_class", columns="model", values="attack_success",
                                  aggfunc="mean") * 100).round(1)

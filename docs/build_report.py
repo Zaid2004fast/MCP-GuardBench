@@ -91,20 +91,26 @@ def add_table(doc, rows: list[list[str]]) -> None:
     doc.add_paragraph()
 
 
-def results_markdown(results_dir: Path) -> str:
-    path = results_dir / "episodes.jsonl"
-    if not path.exists():
+def results_markdown(results_dirs: list[Path]) -> str:
+    rows = []
+    for d in results_dirs:
+        path = d / "episodes.jsonl"
+        if path.exists():
+            rows += [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines()]
+    if not rows:
         return "*Initial results: run `python -m mcpguard.eval.run --config configs/baseline_local.yaml`.*"
-    df = pd.DataFrame([json.loads(l) for l in path.read_text(encoding="utf-8").splitlines()])
-    lines = ["**Initial results (Phase 1 baseline).** Every attacked and benign scenario was run "
-             "end to end through real MCP servers; numbers are percentages.", ""]
+    df = pd.DataFrame(rows)
+    df = df[df.status != "error"]  # provider/infra failures say nothing about the model's security
+    lines = ["**Initial results (Phase 1 baseline).** All episodes ran end to end through real MCP "
+             "servers; numbers are percentages (coverage per model is given below the tables).", ""]
     lines.append("| Model | Defense | Episodes | BU | ASR | PUA | NRP | PVR | Tool calls/ep | Sec/ep |")
     lines.append("|---|---|---|---|---|---|---|---|---|---|")
     for (model, defense), g in df.groupby(["model", "defense"], sort=False):
         att, ben = g[g.attack_id.notna()], g[g.attack_id.isna()]
         asr, pua = att.attack_success.mean(), att.utility.mean()
+        bu = f"{100*ben.utility.mean():.1f}" if len(ben) >= 3 else "n/a"
         lines.append(
-            f"| {model} | {defense} | {len(g)} | {100*ben.utility.mean():.1f} | {100*asr:.1f} | "
+            f"| {model.split(':', 1)[1]} | {defense} | {len(g)} | {bu} | {100*asr:.1f} | "
             f"{100*pua:.1f} | {100*pua*(1-asr):.1f} | {100*(att.privilege_violations > 0).mean():.1f} | "
             f"{att.tool_calls.mean():.2f} | {g.wall_time_s.mean():.1f} |")
     lines += ["", "**ASR (%) by attack class.**", ""]
@@ -126,7 +132,7 @@ def results_markdown(results_dir: Path) -> str:
 
 def build(md_path: Path, out_path: Path, results_dirs: list[Path]) -> None:
     text = md_path.read_text(encoding="utf-8")
-    text = text.replace("{{INITIAL_RESULTS}}", "\n\n".join(results_markdown(d) for d in results_dirs))
+    text = text.replace("{{INITIAL_RESULTS}}", results_markdown(results_dirs))
     doc = Document()
     for section in doc.sections:
         section.left_margin = section.right_margin = Cm(2.0)
@@ -220,7 +226,8 @@ def build(md_path: Path, out_path: Path, results_dirs: list[Path]) -> None:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--results", nargs="*", default=[str(ROOT / "results" / "phase1-baseline-local")])
-    ap.add_argument("--out", default=str(DOCS / "Phase1_G1-XX_Report.docx"))
+    ap.add_argument("--results", nargs="*",
+                    default=[str(p) for p in sorted((ROOT / "results").glob("phase1-*")) if p.is_dir()])
+    ap.add_argument("--out", default=str(DOCS / "Phase1_G1-02_23I-0671.docx"))
     a = ap.parse_args()
     build(DOCS / "phase1_report.md", Path(a.out), [Path(r) for r in a.results])

@@ -21,6 +21,27 @@ ENDPOINTS = {
 }
 
 
+def _duration(value: str) -> float:
+    """Parse Groq-style durations such as '577ms', '7.66s' or '1m26.4s' into seconds."""
+    total = 0.0
+    for num, unit in re.findall(r"([\d.]+)(ms|h|m|s)", value):
+        total += float(num) * {"ms": 0.001, "s": 1, "m": 60, "h": 3600}[unit]
+    return total
+
+
+def _backoff(headers: httpx.Headers, attempt: int) -> float:
+    """Wait as long as the provider says the token window needs, else short exponential."""
+    if "retry-after" in headers:
+        try:
+            return min(float(headers["retry-after"]) + 0.5, 120)
+        except ValueError:
+            pass
+    reset = headers.get("x-ratelimit-reset-tokens")
+    if reset:
+        return min(_duration(reset) + 1.0, 60)
+    return min(2 ** attempt, 20)
+
+
 class OpenAICompatProvider(Provider):
     def __init__(self, endpoint: str, model: str, temperature: float = 0.0, timeout: float = 120.0,
                  max_retries: int = 12):
@@ -48,8 +69,7 @@ class OpenAICompatProvider(Provider):
         for attempt in range(self.max_retries):
             r = await self.client.post(f"{self.base_url}/chat/completions", json=payload)
             if r.status_code in (429, 500, 502, 503):
-                wait = max(float(r.headers.get("retry-after", 0)), 2 ** min(attempt, 6))
-                await asyncio.sleep(min(wait, 90))
+                await asyncio.sleep(_backoff(r.headers, attempt))
                 continue
             if r.status_code == 400 and "tool" in r.text.lower():
                 # some providers reject malformed model-generated tool calls; surface as text
