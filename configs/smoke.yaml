@@ -1,0 +1,8 @@
+# Quick end-to-end check (~3 min on CPU): one scenario per attack class.
+run_name: smoke
+models:
+  - ollama:qwen2.5:1.5b
+defenses:
+  - none
+limit_per_class: 1
+max_steps: 8

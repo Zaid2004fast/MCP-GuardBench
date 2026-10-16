@@ -1,0 +1,8 @@
+# Phase 1 baseline: undefended agent (MSB setting) + prompt-level defense, local open-weight model.
+run_name: phase1-baseline-local
+models:
+  - ollama:qwen2.5:1.5b
+defenses:
+  - none
+  - safety_prompt
+max_steps: 8
