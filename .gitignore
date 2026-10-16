@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+.pytest_cache/
+# raw per-episode artefacts are large; summaries and episodes.jsonl are committed
+results/**/episodes/
+results/**/*.log
+~$*.docx
+AI401*.pdf
