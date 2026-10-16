@@ -70,10 +70,11 @@ def _build(name: str, impl: Callable[..., str], params: list[tuple[str, type, An
         inspect.Parameter(p, inspect.Parameter.POSITIONAL_OR_KEYWORD, default=d, annotation=t)
         for p, t, d in params
     ]
-    if extra_param:
-        sig_params.append(
-            inspect.Parameter(extra_param, inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=str)
-        )
+    if extra_param:  # required, so it must precede parameters that have defaults
+        extra = inspect.Parameter(extra_param, inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=str)
+        first_default = next((i for i, p in enumerate(sig_params)
+                              if p.default is not inspect.Parameter.empty), len(sig_params))
+        sig_params.insert(first_default, extra)
 
     def tool(**kwargs: Any) -> str:
         world.attacker_log(name, dict(kwargs))

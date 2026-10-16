@@ -1,9 +1,9 @@
-# Phase 1 baseline on larger open-weight models via an OpenAI-compatible API (set GROQ_API_KEY in .env).
+# Phase 1 baseline on larger open-weight models via Groq (set GROQ_API_KEY in .env).
 run_name: phase1-baseline-api
 models:
-  - groq:llama-3.3-70b-versatile
-  - groq:qwen/qwen3-32b
-  - groq:llama-3.1-8b-instant
+  - groq:openai/gpt-oss-20b
+  - groq:qwen/qwen3.8-27b
+  - groq:openai/gpt-oss-120b
 defenses:
   - none
 max_steps: 8

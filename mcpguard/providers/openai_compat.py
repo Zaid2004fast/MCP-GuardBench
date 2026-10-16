@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import os
 import time
 from typing import Any
@@ -22,7 +23,7 @@ ENDPOINTS = {
 
 class OpenAICompatProvider(Provider):
     def __init__(self, endpoint: str, model: str, temperature: float = 0.0, timeout: float = 120.0,
-                 max_retries: int = 6):
+                 max_retries: int = 12):
         base_url, key_env = ENDPOINTS[endpoint]
         key = os.environ.get(key_env)
         if not key:
@@ -47,8 +48,8 @@ class OpenAICompatProvider(Provider):
         for attempt in range(self.max_retries):
             r = await self.client.post(f"{self.base_url}/chat/completions", json=payload)
             if r.status_code in (429, 500, 502, 503):
-                wait = float(r.headers.get("retry-after", 2 ** attempt))
-                await asyncio.sleep(min(wait, 60))
+                wait = max(float(r.headers.get("retry-after", 0)), 2 ** min(attempt, 6))
+                await asyncio.sleep(min(wait, 90))
                 continue
             if r.status_code == 400 and "tool" in r.text.lower():
                 # some providers reject malformed model-generated tool calls; surface as text
@@ -69,7 +70,7 @@ class OpenAICompatProvider(Provider):
                 parsed_args = {"_raw": args}
             calls.append(ToolCall(id=c.get("id") or new_call_id(), name=c["function"]["name"],
                                   arguments=parsed_args))
-        content = msg.get("content") or ""
+        content = re.sub(r"<think>.*?</think>", "", msg.get("content") or "", flags=re.DOTALL).strip()
         parsed = False
         if not calls:
             recovered = parse_text_tool_call(content, {t.name for t in tools})

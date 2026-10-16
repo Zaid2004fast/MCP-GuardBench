@@ -93,8 +93,12 @@ async def main_async(args: argparse.Namespace) -> Path:
                 i += 1
                 if (provider.name, dname, sc.id) in done:
                     continue
-                res: EpisodeResult = await run_episode(sc, provider, dcfg, out_dir / provider.name.replace(":", "_") / dname,
-                                                       guard=guard, max_steps=max_steps)
+                try:
+                    res: EpisodeResult = await run_episode(
+                        sc, provider, dcfg, out_dir / provider.name.replace(":", "_").replace("/", "_") / dname,
+                        guard=guard, max_steps=max_steps)
+                except Exception as e:  # e.g. a server failed to start; record and continue
+                    res = failed_episode(sc, provider.name, dname, e)
                 with results_file.open("a", encoding="utf-8") as f:
                     f.write(res.model_dump_json() + "\n")
                 flag = "ATTACK-OK" if res.attack_success else ("benign" if res.attack_success is None else "resisted")
@@ -105,6 +109,16 @@ async def main_async(args: argparse.Namespace) -> Path:
             await guard.aclose()
     write_summary(out_dir)
     return out_dir
+
+
+def failed_episode(sc: Scenario, model: str, defense: str, exc: BaseException) -> EpisodeResult:
+    return EpisodeResult(
+        scenario_id=sc.id, task_id=sc.task_id, domain=sc.domain, attack_id=sc.attack_id,
+        attack_class=sc.attack_class, attack_goal=sc.attack_goal, model=model, defense=defense,
+        utility=False, attack_success=False if sc.attack_id else None, privilege_violations=0,
+        blocked_calls=0, approval_requests=0, steps=0, tool_calls=0, prompt_tokens=0,
+        completion_tokens=0, wall_time_s=0.0, status="error", error=f"{type(exc).__name__}: {exc}"[:500],
+    )
 
 
 def write_summary(out_dir: Path) -> None:
