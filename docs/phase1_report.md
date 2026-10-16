@@ -1,13 +1,13 @@
 # MCPGuardBench: Measuring System-Level Mitigations Against Tool-Access Attacks on MCP-Connected LLM Agents
 
-**Project code:** G1-XX  |  **Seed:** G1 – Securing AI Agent Tool Access: A Benchmark for Model Context Protocol (MCP) Deployments
+**Project code:** G1-02  |  **Seed:** G1 – Securing AI Agent Tool Access: A Benchmark for Model Context Protocol (MCP) Deployments
 
 **Supervisor:** Muhammad Sajjad  |  **Instructor:** Muhammad Owais Idrees  |  AI4016 Agentic Artificial Intelligence, Fall 2026
 
 | Member | Roll number | Role |
 |---|---|---|
-| Zaid Bin Umer (group head) | 22I-XXXX | Testbed, attack servers, defense gateway |
-| [Teammate name] | 22I-XXXX | Literature review, evaluation harness, experiments |
+| Zaid Bin Umer (group head) | 23I-0671 | Testbed, attack servers, defense gateway |
+| Saud ur Rahman | 23I-0540 | Literature review, evaluation harness, experiments |
 
 **GitHub repository:** https://github.com/Zaid2004fast/MCP-GuardBench
 
@@ -253,7 +253,7 @@ MSB [1] (Section A.2) provides the attack taxonomy, the task × attack crossing 
 - **Gap 2:** we add an identity/credential model and two new attack classes, PE and CD.
 - **Gap 3:** we quantify the cost and benefit of human oversight and audit-based detection.
 
-Where models overlap with MSB (Llama-3.1-8B, Llama-3.3-70B, Qwen3), we report our undefended ASR next to theirs as a sanity check on our port of the taxonomy.
+Where models overlap with MSB (Llama-3.1-8B and Llama-3.3-70B via OpenRouter; the Qwen family), we report our undefended ASR next to theirs as a sanity check on our port of the taxonomy.
 
 ## B.4 Target system (end of semester)
 
@@ -299,7 +299,7 @@ A deterministic workflow has no tool-selection step to hijack and no context to 
 - **Scenarios:** `data/user_tasks.yaml` (10 tasks across files, mail, bank and cross-domain) × `data/attacks.yaml` (14 attack variants, 7 attack goals) gives 128 attacked + 10 benign scenarios. These are generated deterministically.
 - **Models:**
   - Local through Ollama: `qwen2.5:1.5b`, `llama3.2:3b`, `qwen2.5:3b`.
-  - Larger open-weight models through the Groq OpenAI-compatible API: `llama-3.3-70b-versatile`, `qwen3-32b`, `llama-3.1-8b-instant`. These overlap with MSB's model set.
+  - Larger open-weight models through the Groq OpenAI-compatible API: `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `qwen/qwen3.8-27b`. The Llama-3.x models used in MSB are no longer served by Groq; we will add them through OpenRouter in Phase 2 so that results can be compared directly with MSB.
 - **Reference data:** MSB's public repository (MIT), used to align attack templates and metric definitions.
 
 ## B.8 System architecture
@@ -335,7 +335,7 @@ A deterministic workflow has no tool-selection step to hijack and no context to 
 ## B.11 Evaluation plan
 
 - **Evaluation set:** 128 attacked + 10 benign scenarios; 10 attack classes, 7 goals, 4 domains.
-- **Models:** 3 local + 3 API open-weight models, matching MSB on Llama-3.1-8B, Llama-3.3-70B and the Qwen family.
+- **Models:** 3 local (Qwen2.5-1.5B/3B, Llama-3.2-3B) + 3 Groq-hosted open-weight models (gpt-oss-20B/120B, Qwen3.8-27B), plus Llama-3.1-8B/3.3-70B via OpenRouter to overlap with MSB.
 - **Defense grid:** none, safety_prompt, llm_guard, allowlist, scoped, hitl, allowlist+scoped, full.
 - **Ablations:** leave-one-out from `full`; per-attack-class and per-stage breakdowns; HITL approver variants.
 - **Metrics:**
@@ -356,8 +356,8 @@ Everything below is implemented in the repository.
 - **Tool interfaces:** four MCP servers, the hub and the gateway.
 - **State and contracts:** see B.8.
 - **Evaluation suite:** scenario generator, judges and metrics.
-- **Tests:** 13 tests, including scripted end-to-end episodes through real MCP servers. They verify that each attack class is detectable and that the allowlist, scoped credentials and HITL each block their target attack.
-- **End-to-end runs:** a full baseline run, B0 and B1 on all 138 scenarios.
+- **Tests:** 14 tests, including scripted end-to-end episodes through real MCP servers. They verify that each attack class is detectable and that the allowlist, scoped credentials and HITL each block their target attack.
+- **End-to-end runs:** 518 episodes across four open-weight models. These cover B0 on every model and B1 on the local model; the results follow.
 
 {{INITIAL_RESULTS}}
 
@@ -387,7 +387,7 @@ Everything below is implemented in the repository.
 | Member | Responsibilities |
 |---|---|
 | Zaid Bin Umer | Sandbox world and MCP servers; attack server and catalogue; defense gateway (allowlist, scoped credentials, HITL, audit); Docker release |
-| [Teammate] | Literature review and gap analysis; evaluation harness, metrics and statistics; running experiments and failure analysis; paper drafting and figures |
+| Saud ur Rahman | Literature review and gap analysis; evaluation harness, metrics and statistics; running experiments and failure analysis; paper drafting and figures |
 | Both | Research design, gap definitions, presentation and viva. Each member is responsible for understanding the full system. |
 
 ## B.15 Potential publication direction

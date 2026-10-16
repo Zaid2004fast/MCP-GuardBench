@@ -2,7 +2,7 @@
 
 **A sandboxed, reproducible benchmark for attacks on — and system-level defenses of — AI agent tool access through the Model Context Protocol (MCP).**
 
-AI4016 Agentic AI semester project (FAST-NUCES, Fall 2026), project seed **G1: Securing AI Agent Tool Access**.
+AI4016 Agentic AI semester project (FAST-NUCES, Fall 2026) by Zaid Bin Umer (23I-0671) and Saud ur Rahman (23I-0540), project seed **G1: Securing AI Agent Tool Access**.
 Base paper: *MCP Security Bench (MSB): Benchmarking Attacks Against Model Context Protocol in LLM Agents*, Zhang et al., **ICLR 2026**.
 
 > **Safety scope.** Everything runs inside a local sandbox. The "malicious" MCP server only reads and writes a per-episode JSON world file. All secrets are fake canary strings, and all e-mail and bank operations are simulated. Nothing contacts real services except the LLM endpoint you configure. This project is for defensive purposes only.
@@ -45,7 +45,7 @@ Base paper: *MCP Security Bench (MSB): Benchmarking Attacks Against Model Contex
 
 ```bash
 python -m pip install -r requirements.txt          # Python 3.11+
-python -m pytest -q                                # 13 tests: unit + scripted end-to-end episodes
+python -m pytest -q                                # 14 tests: unit + scripted end-to-end episodes
 
 # local open-weight model (CPU is fine for 1.5-3B models)
 ollama pull qwen2.5:1.5b
@@ -97,7 +97,19 @@ tests/                      unit tests + scripted end-to-end tests
 
 ## Phase 1 baseline results
 
-See [`results/phase1-baseline-local/summary.md`](results/phase1-baseline-local/summary.md). It covers the undefended agent and the safety-prompt baseline on a local open-weight model.
+Undefended agent (B0) across four open-weight models, plus the safety-prompt baseline (B1) on the local model. Infra errors are excluded from all metrics.
+
+| Model | Defense | Episodes | BU | ASR | PUA | NRP | PVR |
+|---|---|---|---|---|---|---|---|
+| qwen2.5:1.5b (local) | none | 138 | 80.0 | 24.2 | 57.0 | 43.2 | 9.4 |
+| qwen2.5:1.5b (local) | safety_prompt | 138 | 80.0 | 24.2 | 53.9 | 40.9 | 7.0 |
+| qwen3.8-27b (Groq) | none | 61 | n/a | 28.3 | 83.3 | 59.7 | 1.7 |
+| gpt-oss-20b (Groq) | none | 110 | 100.0 | 55.4 | 72.3 | 32.2 | 22.8 |
+| gpt-oss-120b (Groq) | none | 66 | 100.0 | 70.0 | 81.7 | 24.5 | 31.7 |
+
+Name collision succeeds in 100% of episodes on every model. The safety prompt does not change ASR. Privilege escalation succeeds in every gpt-oss episode. Per-run details are in `results/phase1-*/summary.md`, and the analysis is in section B.12 of the [Phase 1 report](docs/phase1_report.md).
+
+Groq's free tier caps each model at 200k tokens per day, so the API models ran stratified subsets (6 scenarios per class); see the report for exact coverage.
 
 ## Roadmap (Phase 2)
 
