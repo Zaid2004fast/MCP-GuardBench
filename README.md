@@ -55,6 +55,9 @@ python -m mcpguard.eval.run --config configs/baseline_local.yaml   # Phase 1 bas
 # larger open-weight models through an OpenAI-compatible API
 cp .env.example .env    # then add GROQ_API_KEY=...
 python -m mcpguard.eval.run --config configs/baseline_api.yaml
+
+# charts: asr_by_class.png and security_utility.png, written into the run folder
+python -m mcpguard.eval.plots results/phase1-baseline-local
 ```
 
 The CLI also takes ad-hoc arguments, for example:
@@ -88,6 +91,7 @@ mcpguard/
   eval/judge.py             deterministic predicates
   eval/metrics.py           ASR / PUA / NRP / BU / PVR aggregation
   eval/run.py               CLI
+  eval/plots.py             ASR-by-class and security-utility charts for a run
   contracts.py              pydantic contracts: Scenario, AgentState, ToolCallRecord, EpisodeResult...
 data/                       world_seed.json, user_tasks.yaml, attacks.yaml, allowlist.json
 configs/                    defenses.yaml and run configs
