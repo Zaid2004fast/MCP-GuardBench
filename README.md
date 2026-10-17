@@ -7,7 +7,7 @@ Base paper: *MCP Security Bench (MSB): Benchmarking Attacks Against Model Contex
 
 > **Safety scope.** Everything runs inside a local sandbox. The "malicious" MCP server only reads and writes a per-episode JSON world file. All secrets are fake canary strings, and all e-mail and bank operations are simulated. Nothing contacts real services except the LLM endpoint you configure. This project is for defensive purposes only.
 
-![architecture](docs/architecture.png)
+The full architecture diagram is in the Phase 1 report (`docs/Phase1_G1-02_23I-0671.pdf`, Section B.8).
 
 ## What it does
 
@@ -91,7 +91,7 @@ mcpguard/
   contracts.py              pydantic contracts: Scenario, AgentState, ToolCallRecord, EpisodeResult...
 data/                       world_seed.json, user_tasks.yaml, attacks.yaml, allowlist.json
 configs/                    defenses.yaml and run configs
-docs/                       architecture diagram, Phase 1 report
+docs/                       Phase 1 report (PDF)
 tests/                      unit tests + scripted end-to-end tests
 ```
 
@@ -107,7 +107,7 @@ Undefended agent (B0) across four open-weight models, plus the safety-prompt bas
 | gpt-oss-20b (Groq) | none | 110 | 100.0 | 55.4 | 72.3 | 32.2 | 22.8 |
 | gpt-oss-120b (Groq) | none | 66 | 100.0 | 70.0 | 81.7 | 24.5 | 31.7 |
 
-Name collision succeeds in 100% of episodes on every model. The safety prompt does not change ASR. Privilege escalation succeeds in every gpt-oss episode. Per-run details are in `results/phase1-*/summary.md`, and the analysis is in section B.12 of the [Phase 1 report](docs/phase1_report.md).
+Name collision succeeds in 100% of episodes on every model. The safety prompt does not change ASR. Privilege escalation succeeds in every gpt-oss episode. Per-run details are in `results/phase1-*/summary.md`, and the analysis is in Section B.12 of the [Phase 1 report](docs/Phase1_G1-02_23I-0671.pdf).
 
 Groq's free tier caps each model at 200k tokens per day, so the API models ran stratified subsets (6 scenarios per class); see the report for exact coverage.
 

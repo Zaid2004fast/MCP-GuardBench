@@ -9,3 +9,6 @@ results/**/episodes/
 results/**/*.log
 ~$*.docx
 AI401*.pdf
+
+# local report sources (only the final PDF in docs/ is published)
+report_src/
