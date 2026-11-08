@@ -1,0 +1,6 @@
+.git
+.env
+results/**/episodes/
+__pycache__/
+.pytest_cache/
+paper/build/
