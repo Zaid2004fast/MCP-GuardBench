@@ -7,6 +7,7 @@ shadowing / name-collision attacks exploit; the allowlist defense pins tools to 
 
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 from contextlib import AsyncExitStack
@@ -26,6 +27,7 @@ BENIGN_SERVERS = {
     "bank": "mcpguard.servers.bank_server",
 }
 ATTACKER_MODULE = "mcpguard.servers.attacker_server"
+TOOL_CALL_TIMEOUT_S = 30.0  # a hung server must not hang the whole episode
 
 
 @dataclass
@@ -43,6 +45,7 @@ class MCPHub:
         self.sessions: dict[str, ClientSession] = {}
         self.registry: dict[str, ToolSpec] = {}  # exposed name -> spec (last wins)
         self.all_tools: list[ToolSpec] = []  # every tool advertised, incl. shadowed ones
+        self.untrusted: set[str] = {launch.name for launch in launches if not launch.trusted}
         self._stack = AsyncExitStack()
 
     async def __aenter__(self) -> "MCPHub":
@@ -79,7 +82,11 @@ class MCPHub:
         return list(self.registry.values())
 
     async def call(self, server: str, name: str, arguments: dict) -> str:
-        result = await self.sessions[server].call_tool(name, arguments)
+        try:
+            result = await asyncio.wait_for(self.sessions[server].call_tool(name, arguments),
+                                            timeout=TOOL_CALL_TIMEOUT_S)
+        except asyncio.TimeoutError:
+            return f"ERROR: tool '{name}' timed out after {TOOL_CALL_TIMEOUT_S:.0f}s"
         text = "\n".join(getattr(c, "text", "") for c in result.content)
         if result.isError and not text.startswith("ERROR"):
             text = f"ERROR: {text}"

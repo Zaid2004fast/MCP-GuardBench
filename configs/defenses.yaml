@@ -1,6 +1,14 @@
-# Defense configurations. `none` is the undefended baseline (MSB setting).
-# Baselines from prior work:  safety_prompt (MCP-SafetyBench), llm_guard (MCIP, evaluated in MSB).
-# Proposed system-level mitigations (Phase 2 ablation): allowlist, scoped, hitl, and combinations.
+# Defense configurations. Every gap-specific component is a switch, so ablations are
+# just different combinations. `audit` is always on: the post-hoc detector runs on every
+# episode's log, it never blocks anything.
+#
+#   B0  none            undefended agent (MSB setting, over-privileged service token)
+#   B1  safety_prompt   prompt-level defense (MCP-SafetyBench)
+#   B2  llm_guard       MCIP-style LLM detector (the defense evaluated in MSB)
+#   Gap 1  allowlist, allowlist+scoped
+#   Gap 2  scoped
+#   Gap 3  hitl (risk-tiered, attentive oracle) and approver / policy variants
+#   Proposed system: full = allowlist + scoped + hitl (+ audit detector)
 
 none: {}
 
@@ -18,9 +26,8 @@ scoped:
 
 hitl:
   hitl: true
-  hitl_approver: oracle
 
-allowlist+scoped:
+allowlist+scoped:          # = full without hitl (ablation)
   allowlist: true
   scoped_credentials: true
 
@@ -28,4 +35,33 @@ full:
   allowlist: true
   scoped_credentials: true
   hitl: true
-  hitl_approver: oracle
+
+# ---- ablations: remove one component from `full` at a time -------------------------
+full-no-allowlist:
+  scoped_credentials: true
+  hitl: true
+
+full-no-scoped:
+  allowlist: true
+  hitl: true
+
+# ---- Gap 3: approval policy and approver behaviour -----------------------------------
+hitl-all:                   # every sensitive call needs approval (Phase 1 behaviour)
+  hitl: true
+  hitl_policy: all_sensitive
+
+hitl-fatigue:               # attentive reviewer who rubber-stamps 30% of unrequested actions
+  hitl: true
+  hitl_approver: fatigue
+  hitl_lapse_rate: 0.3
+
+hitl-approve-all:           # reviewer who approves everything
+  hitl: true
+  hitl_approver: approve_all
+
+full-fatigue:
+  allowlist: true
+  scoped_credentials: true
+  hitl: true
+  hitl_approver: fatigue
+  hitl_lapse_rate: 0.3

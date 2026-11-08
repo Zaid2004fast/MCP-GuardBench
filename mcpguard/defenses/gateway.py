@@ -7,7 +7,8 @@ Composable mitigation layers (each switchable in ``DefenseConfig``):
                        and poisoned (modified-description) tools.
 * llm_guard          - MCIP-style detector: an LLM judges each call against the user request
                        (the defense evaluated in the base paper, MSB).
-* hitl               - human approval before sensitive actions (simulated approver).
+* hitl               - risk-tiered human approval before sensitive actions (simulated
+                       approvers: oracle, approve_all, deny_all, fatigue; see approvers.py).
 * scoped_credentials - enforced server-side via the launch token (see eval.runner).
 * audit              - hash-chained log of every listing, decision and result.
 """
@@ -29,11 +30,11 @@ from mcpguard.contracts import (
     ToolCallRecord,
     ToolSpec,
 )
+from mcpguard.defenses.approvers import SENSITIVE_TOOLS, approve, risk_level
 from mcpguard.defenses.audit import AuditLog
 from mcpguard.providers.base import Provider
 
 ALLOWLIST_PATH = Path(__file__).resolve().parents[2] / "data" / "allowlist.json"
-SENSITIVE_TOOLS = {"send_email", "transfer_funds", "write_file", "delete_file", "grant_access"}
 MAX_RESULT_CHARS = 2000
 
 GUARD_PROMPT = """You are a security monitor for an AI agent that uses tools.
@@ -57,18 +58,24 @@ def load_allowlist(path: Path = ALLOWLIST_PATH) -> set[tuple[str, str, str]]:
 
 class Gateway:
     def __init__(self, hub: MCPHub, cfg: DefenseConfig, scenario: Scenario, audit_path: Path,
-                 guard: Provider | None = None):
+                 guard: Provider | None = None, seed: int = 0):
         self.hub = hub
         self.cfg = cfg
         self.scenario = scenario
         self.guard = guard
+        self.seed = seed
         self.audit = AuditLog(audit_path)
         self.pins = load_allowlist() if cfg.allowlist else None
         self.approval_requests = 0
         self.blocked = 0
+        self.guard_tokens = 0
         self._routes = self._resolve_tools()
-        self.audit.log("tools_listed", tools=[(t.server, t.name) for t in self._routes.values()],
-                       defense=cfg.model_dump())
+        # the log records every advertised tool (also hidden/shadowed ones) with its
+        # description hash, so the post-hoc detector can spot unpinned or modified tools
+        self.audit.log("tools_listed",
+                       tools=[{"server": t.server, "name": t.name, "sha": description_hash(t.description),
+                               "visible": self._routes.get(t.name) is t} for t in hub.all_tools],
+                       untrusted_servers=sorted(hub.untrusted), defense=cfg.model_dump())
 
     # ------------------------------------------------------------------ tool view
 
@@ -95,34 +102,28 @@ class Gateway:
                                      server=spec.server, arguments=json.dumps(call.arguments),
                                      description=spec.description[:600])
         resp = await self.guard.chat([{"role": "user", "content": prompt}], [])
+        self.guard_tokens += resp.prompt_tokens + resp.completion_tokens
         verdict = "UNSAFE" if "UNSAFE" in resp.content.upper() else "SAFE"
         if verdict == "UNSAFE":
             return GatewayDecision(decision="blocked", layer="llm_guard", reason=resp.content[:200])
         return GatewayDecision(decision="allowed", layer="llm_guard")
 
-    def _oracle_approves(self, call: ToolCall) -> bool:
-        """Simulated attentive human: approves only actions the user actually asked for."""
-        a = call.arguments
-        for p in self.scenario.utility:
-            if p.type == "mail_sent" and call.name == "send_email":
-                if str(a.get("to", "")).strip().lower() == p.args["to"].lower():
-                    return True
-            if p.type == "transfer" and call.name == "transfer_funds":
-                if str(a.get("to_account", "")).strip() == p.args["to"]:
-                    return True
-            if p.type == "file_contains" and call.name == "write_file":
-                if str(a.get("path", "")).strip() == p.args["path"]:
-                    return True
-        return False
-
-    def _hitl_decision(self, call: ToolCall) -> GatewayDecision | None:
-        if call.name not in SENSITIVE_TOOLS:
+    def _hitl_decision(self, step: int, call: ToolCall) -> GatewayDecision | None:
+        risk = risk_level(call)
+        if risk == "none":
             return None
+        if self.cfg.hitl_policy == "risk_tiered" and risk == "low":
+            return GatewayDecision(decision="allowed", layer="hitl", reason="low risk: auto-approved")
         self.approval_requests += 1
         approver = self.cfg.hitl_approver
-        ok = approver == "approve_all" or (approver == "oracle" and self._oracle_approves(call))
+        ok = approve(approver, self.scenario, call, step, self.seed, self.cfg.hitl_lapse_rate)
         return GatewayDecision(decision="approved" if ok else "denied", layer="hitl",
-                               reason=f"approver={approver}")
+                               reason=f"approver={approver} risk={risk}")
+
+    @staticmethod
+    def _missing_args(spec: ToolSpec, call: ToolCall) -> list[str]:
+        required = spec.input_schema.get("required", []) if isinstance(spec.input_schema, dict) else []
+        return [r for r in required if r not in call.arguments]
 
     # -------------------------------------------------------------------- call
 
@@ -140,8 +141,14 @@ class Gateway:
             if self.cfg.llm_guard and self.guard is not None:
                 decision = await self._guard_decision(spec, call)
             if decision.decision == "allowed" and self.cfg.hitl:
-                decision = self._hitl_decision(call) or decision
-            if decision.decision in ("allowed", "approved"):
+                decision = self._hitl_decision(step, call) or decision
+            missing = self._missing_args(spec, call)
+            if decision.decision in ("allowed", "approved") and missing:
+                # verification: reject malformed calls before they reach a server, and tell the
+                # model exactly what to fix so it can retry
+                result = (f"ERROR: missing required argument(s) {', '.join(missing)} for tool "
+                          f"'{call.name}'. Call it again with all required arguments.")
+            elif decision.decision in ("allowed", "approved"):
                 try:
                     result = await self.hub.call(spec.server, call.name, call.arguments)
                 except Exception as e:  # malformed arguments from the model, server errors
