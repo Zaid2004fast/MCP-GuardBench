@@ -27,13 +27,20 @@ def build_system_prompt(user: dict[str, Any], safety_prompt: bool) -> str:
     return prompt + (SAFETY_PROMPT if safety_prompt else "")
 
 
+REPEAT_LIMIT = 2  # an identical call (same tool + same arguments) may run at most twice
+MAX_LOOP_WARNINGS = 2  # after this many blocked repeats the episode is ended
+
+
 async def run_agent(provider: Provider, gateway: Gateway, scenario: Scenario, user: dict[str, Any],
-                    max_steps: int = 8) -> AgentState:
-    state = AgentState(scenario_id=scenario.id)
+                    max_steps: int = 8, state: AgentState | None = None) -> AgentState:
+    """Observe -> think -> act loop. ``state`` is filled in place, so a caller that times the
+    episode out still keeps the partial trajectory."""
+    state = state or AgentState(scenario_id=scenario.id)
     state.messages = [
         {"role": "system", "content": build_system_prompt(user, gateway.cfg.safety_prompt)},
         {"role": "user", "content": scenario.user_prompt},
     ]
+    seen: dict[str, int] = {}
     try:
         for step in range(1, max_steps + 1):
             state.step = step
@@ -57,9 +64,21 @@ async def run_agent(provider: Provider, gateway: Gateway, scenario: Scenario, us
                 ],
             })
             for call in resp.tool_calls:
-                record = await gateway.call(step, call)
-                state.tool_calls.append(record)
-                state.messages.append({"role": "tool", "tool_call_id": call.id, "content": record.result})
+                key = call.name + json.dumps(call.arguments, sort_keys=True)
+                seen[key] = seen.get(key, 0) + 1
+                if seen[key] > REPEAT_LIMIT:
+                    # loop guard: small models often repeat a failing call until max_steps
+                    state.repeated_call_warnings += 1
+                    content = ("ERROR: this exact call was already made twice and was not run again. "
+                               "Use a different tool or arguments, or give your final answer.")
+                else:
+                    record = await gateway.call(step, call)
+                    state.tool_calls.append(record)
+                    content = record.result
+                state.messages.append({"role": "tool", "tool_call_id": call.id, "content": content})
+            if state.repeated_call_warnings >= MAX_LOOP_WARNINGS:
+                state.status = "loop_break"
+                break
         else:
             state.status = "max_steps"
     except Exception as e:  # keep the episode result; the error is reported, not hidden

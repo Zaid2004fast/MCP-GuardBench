@@ -43,8 +43,8 @@ def _backoff(headers: httpx.Headers, attempt: int) -> float:
 
 
 class OpenAICompatProvider(Provider):
-    def __init__(self, endpoint: str, model: str, temperature: float = 0.0, timeout: float = 120.0,
-                 max_retries: int = 12):
+    def __init__(self, endpoint: str, model: str, temperature: float = 0.0, seed: int = 0,
+                 timeout: float = 120.0, max_retries: int = 12):
         base_url, key_env = ENDPOINTS[endpoint]
         key = os.environ.get(key_env)
         if not key:
@@ -53,6 +53,7 @@ class OpenAICompatProvider(Provider):
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.temperature = temperature
+        self.seed = seed
         self.max_retries = max_retries
         self.client = httpx.AsyncClient(timeout=timeout, headers={"Authorization": f"Bearer {key}"})
 
@@ -63,7 +64,7 @@ class OpenAICompatProvider(Provider):
             "tools": tools_to_openai(tools),
             "tool_choice": "auto",
             "temperature": self.temperature,
-            "seed": 0,
+            "seed": self.seed,
         }
         t0 = time.perf_counter()
         for attempt in range(self.max_retries):

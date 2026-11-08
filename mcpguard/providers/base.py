@@ -17,6 +17,10 @@ class Provider(ABC):
     @abstractmethod
     async def chat(self, messages: list[dict[str, Any]], tools: list[ToolSpec]) -> LLMResponse: ...
 
+    def begin_episode(self, scenario: Any) -> None:
+        """Hook for scenario-aware (deterministic) agents; LLM providers ignore it."""
+        return None
+
     async def aclose(self) -> None:  # pragma: no cover - optional
         return None
 

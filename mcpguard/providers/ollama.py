@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import time
@@ -35,11 +36,11 @@ def _to_ollama_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 class OllamaProvider(Provider):
     def __init__(self, model: str, host: str | None = None, temperature: float = 0.0,
-                 num_ctx: int = 8192, timeout: float = 900.0):
+                 seed: int = 0, num_ctx: int = 8192, timeout: float = 900.0):
         self.model = model
         self.name = f"ollama:{model}"
         self.host = host or os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
-        self.options = {"temperature": temperature, "num_ctx": num_ctx, "seed": 0}
+        self.options = {"temperature": temperature, "num_ctx": num_ctx, "seed": seed}
         self.client = httpx.AsyncClient(timeout=timeout)
 
     async def chat(self, messages: list[dict[str, Any]], tools: list[ToolSpec]) -> LLMResponse:
@@ -51,7 +52,15 @@ class OllamaProvider(Provider):
             "options": self.options,
         }
         t0 = time.perf_counter()
-        r = await self.client.post(f"{self.host}/api/chat", json=payload)
+        for attempt in range(3):  # transient local-server hiccups (model reload, OOM retry)
+            try:
+                r = await self.client.post(f"{self.host}/api/chat", json=payload)
+                if r.status_code < 500:
+                    break
+            except httpx.TransportError:
+                if attempt == 2:
+                    raise
+            await asyncio.sleep(2 ** attempt)
         r.raise_for_status()
         data = r.json()
         latency = time.perf_counter() - t0
