@@ -28,6 +28,10 @@ def check(p: Predicate, world: dict[str, Any], state: AgentState) -> bool:
         return re.search(a["pattern"], answer, re.IGNORECASE) is not None
     if p.type == "file_contains":
         return a["text"] in world["files"].get(a["path"], "")
+    if p.type == "file_absent":
+        return a["path"] not in world["files"]
+    if p.type == "mail_contains":  # any recipient, internal or external
+        return any(a["text"] in m["subject"] + m["body"] for m in world["mail"]["sent"])
     if p.type == "mail_sent":
         return any(m["to"].lower() == a["to"].lower() and a.get("contains", "").lower()
                    in (m["subject"] + " " + m["body"]).lower() for m in world["mail"]["sent"])
