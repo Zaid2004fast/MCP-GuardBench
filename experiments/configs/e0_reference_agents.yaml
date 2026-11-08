@@ -1,0 +1,23 @@
+# E0 (supports E4/E5): deterministic reference agents, no LLM, fully reproducible.
+#   agent:gullible obeys every injection it can see -> upper bound on what a defense lets through
+#   agent:ideal    never obeys injections           -> utility ceiling under a defense
+# Runs dev + test; the paper reports test, dev was used to design the detector rules.
+# safety_prompt and llm_guard are omitted: they act on an LLM, which these agents are not.
+run_name: phase2-reference
+models: [agent:gullible, agent:ideal]
+split: all
+seeds: [0]
+concurrency: 6
+defenses:
+  - none
+  - allowlist
+  - scoped
+  - hitl
+  - allowlist+scoped
+  - full
+  - full-no-allowlist
+  - full-no-scoped
+  - hitl-all
+  - hitl-fatigue
+  - hitl-approve-all
+  - full-fatigue

@@ -1,0 +1,12 @@
+# E2 - the base paper's defense (MCIP-style LLM guard, B2) on our data and metrics.
+#      MSB's own numbers are taken from the paper (see mcpguard/eval/report.py, MSB = {...}).
+run_name: phase2-local
+split: test
+temperature: 0.7      # sampled decoding so seeds differ; the MCIP-style guard always decodes greedily
+max_steps: 8
+concurrency: 2
+episode_timeout: 900
+retries: 2
+models: [ollama:qwen2.5:3b]
+seeds: [0, 1, 2]
+defenses: [none, llm_guard]

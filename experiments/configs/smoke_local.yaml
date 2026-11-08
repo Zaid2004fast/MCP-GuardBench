@@ -1,0 +1,8 @@
+# ~5 min end-to-end check: one scenario per class, two defenses.
+run_name: smoke
+split: test
+models: [ollama:qwen2.5:3b]
+defenses: [none, full]
+limit_per_class: 1
+seeds: [0]
+temperature: 0.7

@@ -1,0 +1,13 @@
+# E4b - secondary gap variants, one seed (compute budget):
+#   Gap 1: allowlist alone
+#   Gap 3: all-sensitive approval, fatigue and approve-all approvers, full system with a fatigued approver
+run_name: phase2-local
+split: test
+temperature: 0.7      # sampled decoding so seeds differ; the MCIP-style guard always decodes greedily
+max_steps: 8
+concurrency: 2
+episode_timeout: 900
+retries: 2
+models: [ollama:qwen2.5:3b]
+seeds: [0]
+defenses: [allowlist, hitl-all, hitl-fatigue, hitl-approve-all, full-fatigue]

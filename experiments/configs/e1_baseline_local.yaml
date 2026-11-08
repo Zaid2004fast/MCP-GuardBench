@@ -1,0 +1,11 @@
+# E1 - baselines from Phase 1: B0 undefended agent (MSB setting) and B1 safety prompt.
+run_name: phase2-local
+split: test
+temperature: 0.7      # sampled decoding so seeds differ; the MCIP-style guard always decodes greedily
+max_steps: 8
+concurrency: 2
+episode_timeout: 900
+retries: 2
+models: [ollama:qwen2.5:3b]
+seeds: [0, 1, 2]
+defenses: [none, safety_prompt]

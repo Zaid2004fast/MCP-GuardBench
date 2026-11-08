@@ -1,0 +1,15 @@
+# E4 - one experiment per gap.
+#   Gap 1: allowlist, scoped, allowlist+scoped vs llm_guard (E2)
+#   Gap 2: none (admin token) vs scoped (user token): PVR, CD/PE success, BU
+#   Gap 3: approval policy (risk-tiered vs all-sensitive) x approver (oracle, fatigue, approve-all)
+run_name: phase2-local
+split: test
+temperature: 0.7      # sampled decoding so seeds differ; the MCIP-style guard always decodes greedily
+max_steps: 8
+concurrency: 2
+episode_timeout: 900
+retries: 2
+models: [ollama:qwen2.5:3b]
+seeds: [0, 1, 2]
+# core gap components (3 seeds); approver variants are in e4b_approvers_local.yaml (1 seed)
+defenses: [allowlist+scoped, scoped, hitl]

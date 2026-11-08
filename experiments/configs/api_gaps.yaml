@@ -1,0 +1,11 @@
+# E4/E5 on API models (one seed to fit the free tier).
+run_name: phase2-api
+split: test
+temperature: 0.7
+max_steps: 8
+concurrency: 1        # free-tier rate limits; the provider backs off on HTTP 429
+episode_timeout: 900
+retries: 3
+models: [groq:openai/gpt-oss-20b, groq:openai/gpt-oss-120b, groq:qwen/qwen3.8-27b]
+seeds: [0]
+defenses: [allowlist, scoped, hitl, hitl-all, hitl-fatigue, hitl-approve-all, full-no-allowlist, full-no-scoped]

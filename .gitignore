@@ -12,3 +12,13 @@ AI401*.pdf
 
 # local report sources (only the final PDF in docs/ is published)
 report_src/
+/*.log
+paper/build/
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+results/demo/
+results/smoke/
+results/_*/

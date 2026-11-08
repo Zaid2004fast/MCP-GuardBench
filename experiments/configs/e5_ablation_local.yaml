@@ -1,0 +1,12 @@
+# E5 - ablation: remove one component of 'full' at a time.
+#   full-no-hitl is 'allowlist+scoped' (run in E4), full-no-allowlist and full-no-scoped run here.
+run_name: phase2-local
+split: test
+temperature: 0.7      # sampled decoding so seeds differ; the MCIP-style guard always decodes greedily
+max_steps: 8
+concurrency: 2
+episode_timeout: 900
+retries: 2
+models: [ollama:qwen2.5:3b]
+seeds: [0, 1, 2]
+defenses: [full-no-allowlist, full-no-scoped]
