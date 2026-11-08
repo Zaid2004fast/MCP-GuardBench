@@ -21,14 +21,15 @@
 
 \begin{document}
 
-\title{\sys: Measuring System-Level Mitigations Against\\Tool-Access Attacks on MCP-Connected LLM Agents}
+\title{\sys: Measuring System-Level Mitigations Against\\Tool-Access Attacks on MCP-Connected LLM Agents\\[4pt]
+{\normalsize AI4016 Agentic Artificial Intelligence, Fall 2026 --- Project G1-02}}
 
 \author{
 \IEEEauthorblockN{Zaid Bin Umer}
-\IEEEauthorblockA{FAST-NUCES, Islamabad\\23I-0671}
+\IEEEauthorblockA{FAST-NUCES, Islamabad\\23I-0671\\zaidbinumer024@gmail.com}
 \and
 \IEEEauthorblockN{Saud ur Rahman}
-\IEEEauthorblockA{FAST-NUCES, Islamabad\\23I-0540}
+\IEEEauthorblockA{FAST-NUCES, Islamabad\\23I-0540\\muhammadsaudurrahman@gmail.com}
 }
 
 \maketitle
@@ -179,19 +180,6 @@ setting) or the user's scoped token. Independently, every executed operation $o$
 the \emph{user's} scopes $\sigma_u$; an operation with $o\notin\sigma_u$ is a privilege violation even
 when the service token allows it. This separates ``the agent could'' from ``the user may''.
 
-\textbf{Metrics.} Following MSB~\cite{zhang2026msb} and ASB~\cite{zhang2025asb}, over attacked
-episodes $\mathcal{E}_a$ and benign episodes $\mathcal{E}_b$:
-\begin{align*}
-\text{ASR} &= \tfrac{1}{|\mathcal{E}_a|}\textstyle\sum_{e\in\mathcal{E}_a} \mathbb{1}[\exists p\in A_e: p(w_T,\tau)],\\
-\text{PUA} &= \tfrac{1}{|\mathcal{E}_a|}\textstyle\sum_{e\in\mathcal{E}_a} \mathbb{1}[\forall p\in U_e: p(w_T,\tau)],\quad
-\text{NRP} = \text{PUA}\,(1-\text{ASR}),
-\end{align*}
-and benign utility BU is the PUA formula over $\mathcal{E}_b$. For Gap~2, the privilege-violation rate
-$\text{PVR}$ is the share of attacked episodes with at least one violation. For Gap~3, the
-\emph{stop rate} is $P(\text{attack fails}\mid \text{agent attempted a sensitive action the user did not
-request})$, the oversight cost is the number of approval requests per benign task, and the detector
-is scored by recall on successful attacks, precision, and false-positive rate on benign episodes.
-
 \textbf{Threat model.} The attacker controls one third-party MCP server that the user installed
 (registered last, as a newly added integration) and/or content inside data the agent reads through
 trusted servers (a file, an e-mail, a transaction memo). The attacker cannot modify the host, the
@@ -303,6 +291,28 @@ own numbers are \emph{taken from the paper}, ours are reproduced. E3: the propos
 E5: ablation removing one component from the full system at a time. E6: tokens (agent and guard),
 latency, tool calls, recovered calls, loop/timeout and infrastructure-error rates. E0 runs the
 reference agents under every defense on both splits.
+
+% =====================================================================================
+\section{Evaluation Methodology}
+\label{sec:evalmethod}
+% =====================================================================================
+
+\textbf{Metrics.} Following MSB~\cite{zhang2026msb} and ASB~\cite{zhang2025asb}, over attacked
+episodes $\mathcal{E}_a$ and benign episodes $\mathcal{E}_b$:
+\begin{align*}
+\text{ASR} &= \tfrac{1}{|\mathcal{E}_a|}\textstyle\sum_{e\in\mathcal{E}_a} \mathbb{1}[\exists p\in A_e: p(w_T,\tau)],\\
+\text{PUA} &= \tfrac{1}{|\mathcal{E}_a|}\textstyle\sum_{e\in\mathcal{E}_a} \mathbb{1}[\forall p\in U_e: p(w_T,\tau)],\quad
+\text{NRP} = \text{PUA}\,(1-\text{ASR}),
+\end{align*}
+and benign utility BU is the PUA formula over $\mathcal{E}_b$. For Gap~2, the privilege-violation rate
+$\text{PVR}$ is the share of attacked episodes with at least one violation. For Gap~3, the
+\emph{stop rate} is $P(\text{attack fails}\mid \text{agent attempted a sensitive action the user did not
+request})$, the oversight cost is the number of approval requests per benign task, and the detector
+is scored by recall on successful attacks, precision, and false-positive rate on benign episodes.
+
+\textbf{Comparison with the base paper.} We use MSB's metric definitions unchanged, so ASR, PUA
+and NRP are directly comparable. MSB's numbers are taken from the paper; ours are reproduced on
+our own scenarios, and the comparison is reported in Table~\ref{tab:msb}.
 
 \textbf{Statistics.} We use 95\% bootstrap confidence intervals~\cite{efron1979bootstrap} over
 episodes and the exact McNemar test~\cite{mcnemar1947} for two defenses on the same paired
@@ -430,6 +440,23 @@ unrequested actions raises ASR from 37.3\% to 54.5\%. \pending{LLM: stop rate or
 undefended episodes, \pending{recall / precision / FPR}; because its rules depend only on organisation
 policy, it also flags the internal confused deputy's out-of-home read, which is why detection
 complements prevention (H3).
+
+\subsection{Gap-resolution summary}
+
+Table~\ref{tab:gapres} summarises the outcome for each research gap, applying the Phase~1
+success criteria to the models with benign utility of at least 50\%.
+
+\begin{table*}[t]
+\centering
+\caption{Gap-resolution table (test split). Verdicts apply the Phase~1 success criteria.}
+\label{tab:gapres}
+\begin{adjustbox}{max width=\textwidth}\gen{gap_resolution}\end{adjustbox}
+\end{table*}
+
+% =====================================================================================
+\section{Ablation and Comparative Analysis}
+\label{sec:ablation}
+% =====================================================================================
 
 \subsection{E5: ablation}
 
