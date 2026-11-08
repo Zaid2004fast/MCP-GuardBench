@@ -1,128 +1,210 @@
 # MCPGuardBench
 
-**A sandboxed, reproducible benchmark for attacks on — and system-level defenses of — AI agent tool access through the Model Context Protocol (MCP).**
+**A sandboxed, reproducible benchmark for attacks on, and system-level defenses of, AI-agent
+tool access through the Model Context Protocol (MCP).**
 
-AI4016 Agentic AI semester project (FAST-NUCES, Fall 2026) by Zaid Bin Umer (23I-0671) and Saud ur Rahman (23I-0540), project seed **G1: Securing AI Agent Tool Access**.
-Base paper: *MCP Security Bench (MSB): Benchmarking Attacks Against Model Context Protocol in LLM Agents*, Zhang et al., **ICLR 2026**.
+AI4016 Agentic AI semester project (FAST-NUCES, Fall 2026), project code G1-02, seed **G1:
+Securing AI Agent Tool Access**. Zaid Bin Umer (23I-0671) and Saud ur Rahman (23I-0540).
+Supervisor: Muhammad Sajjad.
+Base paper: *MCP Security Bench (MSB): Benchmarking Attacks Against Model Context Protocol in
+LLM Agents*, Zhang et al., **ICLR 2026**.
 
-> **Safety scope.** Everything runs inside a local sandbox. The "malicious" MCP server only reads and writes a per-episode JSON world file. All secrets are fake canary strings, and all e-mail and bank operations are simulated. Nothing contacts real services except the LLM endpoint you configure. This project is for defensive purposes only.
+> **Safety scope.** Everything runs in a local sandbox. The "malicious" MCP server only reads
+> and writes a per-episode JSON world file; all secrets are fake canary strings; e-mail and
+> banking are simulated. Nothing contacts real services except the LLM endpoint you configure.
+> For defensive research only.
 
-The full architecture diagram is in the Phase 1 report (`docs/Phase1_G1-02_23I-0671.pdf`, Section B.8).
+## Research question and gaps
 
-## What it does
+MSB measures how often a malicious MCP server can hijack an agent, but it evaluates only one,
+model-based defense, has no notion of *who is allowed to do what*, and does not measure the
+cost of human oversight. We close three gaps (Phase 1 report, `docs/Phase1_G1-02_23I-0671.pdf`):
 
-1. **Testbed.** It launches real MCP servers over stdio: three trusted servers (`files`, `mail`, `bank`) and one untrusted third-party `toolkit` server. All of them operate on a sandboxed world with an identity and permission model: an over-privileged service token vs. a user-scoped token, plus ACLs.
-2. **Attacks.** It covers 10 attack classes across the three stages of the MCP tool-use pipeline. Eight follow MSB's taxonomy, and two are new authority-misuse classes:
+| Gap | What is missing in MSB and related work | Component in this repo (switch) |
+|---|---|---|
+| 1 | Deterministic, system-level mitigations are never measured | tool **allowlist** pinned by (server, name, description hash) `allowlist`; **scoped credentials** `scoped_credentials` |
+| 2 | No identity/authority model, so privilege escalation and confused-deputy attacks cannot be expressed | identity + ACL model in the world, user vs service token, **PE** and **CD** attack classes, privilege-violation rate |
+| 3 | Human approval and audit logging are recommended but their benefit and cost are unquantified | **risk-tiered human approval** with simulated approvers `hitl`, `hitl_policy`, `hitl_approver`; **hash-chained audit log + post-hoc detector** (always on) |
 
-   | Stage | Class | Vector |
-   |---|---|---|
-   | planning | **PI** tool-description prompt injection (tool poisoning) | poisoned description of a decoy tool |
-   | planning | **NC** name collision / tool shadowing | same tool name, last-registered server wins |
-   | planning | **PM** preference manipulation | look-alike tool claiming to be "recommended" |
-   | invocation | **OP** out-of-scope parameter | extra "mandatory" parameter that harvests the user's PIN |
-   | response | **UI** user impersonation | tool output pretending to be the user |
-   | response | **FE** false error | fake error demanding a harmful "fix" |
-   | response | **TT** tool transfer | output redirecting the agent to an attacker tool |
-   | response | **RI** retrieval / data injection | instruction hidden in a file, e-mail or transaction memo |
-   | planning | **PE** privilege escalation *(new)* | poisoned description asking the agent to grant itself access |
-   | response | **CD** confused deputy *(new)* | plausible request that only the agent's (not the user's) privileges can satisfy |
+## Architecture
 
-   10 user tasks × 14 attack variants give **128 attacked scenarios plus 10 benign scenarios**. Attack goals: secret exfiltration, unauthorised transfer, report exfiltration, HR data exfiltration, permission escalation, credential (PIN) harvesting, and attacker-tool capture.
-3. **Defense gateway.** This is a policy layer between the agent and the hub. Each mitigation can be switched on or off:
-   - `allowlist`: tools pinned by (server, name, description hash)
-   - `scoped_credentials`: least-privilege token, enforced server-side
-   - `hitl`: human approval before sensitive actions
-   - `audit`: hash-chained, tamper-evident log
-
-   Baselines from prior work are included for comparison: `safety_prompt` (MCP-SafetyBench) and `llm_guard` (an MCIP-style detector, the defense evaluated in MSB).
-4. **Deterministic evaluation.** Judges check the final world state and the trace. No LLM judge is used. Metrics:
-   - MSB's **ASR**, **PUA** and **NRP**
-   - benign utility **BU**
-   - **privilege-violation rate** (actions beyond the user's own authority)
-   - blocked calls, approval requests, tokens and latency
-
-## Quick start
-
-```bash
-python -m pip install -r requirements.txt          # Python 3.11+
-python -m pytest -q                                # 14 tests: unit + scripted end-to-end episodes
-
-# local open-weight model (CPU is fine for 1.5-3B models)
-ollama pull qwen2.5:1.5b
-python -m mcpguard.eval.run --config configs/smoke.yaml            # 1 scenario per class, ~5 min
-python -m mcpguard.eval.run --config configs/baseline_local.yaml   # Phase 1 baseline (276 episodes)
-
-# larger open-weight models through an OpenAI-compatible API
-cp .env.example .env    # then add GROQ_API_KEY=...
-python -m mcpguard.eval.run --config configs/baseline_api.yaml
-
-# charts: asr_by_class.png and security_utility.png, written into the run folder
-python -m mcpguard.eval.plots results/phase1-baseline-local
+```mermaid
+flowchart LR
+  U[User task<br/>scenario prompt] --> A
+  subgraph Agent
+    A[Tool-calling LLM agent<br/>ReAct loop, AgentState,<br/>loop guard, timeout]
+  end
+  A -- tool call --> G
+  G -- result / blocked --> A
+  subgraph G[Defense gateway - policy layer]
+    direction TB
+    AL[Tool allowlist<br/>pinned server+name+hash<br/>Gap 1]
+    LG[MCIP-style LLM guard<br/>base-paper defense, B2]
+    H[Risk-tiered human approval<br/>simulated approvers<br/>Gap 3]
+    V[Argument verification]
+    AU[Hash-chained audit log<br/>Gap 3]
+  end
+  G --> HUB[MCP client hub<br/>stdio sessions, flat namespace,<br/>last registered wins]
+  HUB --> F[files server]
+  HUB --> M[mail server]
+  HUB --> B[bank server]
+  HUB --> T[UNTRUSTED toolkit server<br/>PI NC PM OP UI FE TT PE]
+  F & M & B & T --> W[(Per-episode sandbox world<br/>files, mailbox, bank, ACLs, tokens<br/>RI/CD payloads in data<br/>server-side scope check - Gap 2)]
+  W --> J[Deterministic judges<br/>+ post-hoc audit detector]
+  J --> R[Metrics: ASR PUA NRP BU PVR<br/>stop rate, approvals, detector R/P,<br/>tokens, latency]
 ```
 
-The CLI also takes ad-hoc arguments, for example:
+The baseline (B0, MSB setting) calls the hub with an over-privileged service token and no
+gateway. In the proposed system every call passes through the gateway and the servers are
+launched with the user's least-privilege token. A rendered version is Figure 1 of the Phase 1
+report.
+
+| Concern | Where |
+|---|---|
+| Agent loop, observable state | `mcpguard/agent/loop.py`, `mcpguard/contracts.py` (`AgentState`, `ToolCallRecord`) |
+| MCP servers and hub | `mcpguard/servers/`, `mcpguard/agent/mcp_hub.py` |
+| Sandbox world, identity and authority | `mcpguard/env/world.py`, `data/world_seed.json` |
+| Gap 1: allowlist, scoped credentials | `mcpguard/defenses/gateway.py`, `data/allowlist.json`, `eval/runner.py::launches_for` |
+| Gap 2: PE / CD attacks, violation tracking | `data/attacks.yaml`, `env/world.py::record_use` |
+| Gap 3: approval, approvers, detector | `mcpguard/defenses/approvers.py`, `defenses/audit.py`, `defenses/detector.py`, `data/policy.yaml` |
+| Baselines B1, B2 | `agent/loop.py::SAFETY_PROMPT`, `defenses/gateway.py::GUARD_PROMPT` |
+| Evaluation | `mcpguard/eval/` (scenarios, judge, runner, metrics, stats, report, failures, trace) |
+
+## Installation
+
+Python 3.11+ (tested on 3.12 and 3.14, Windows 11 and Linux).
 
 ```bash
-python -m mcpguard.eval.run --models ollama:qwen2.5:1.5b groq:llama-3.3-70b-versatile \
-    --defenses none allowlist scoped full --classes PI CD benign --limit-per-class 3
+git clone https://github.com/Zaid2004fast/MCP-GuardBench.git
+cd MCP-GuardBench
+python -m pip install -r requirements.txt
+python -m pytest -q                       # 60 tests: unit + end-to-end episodes over real MCP servers
 ```
 
-Each run writes the following to `results/<run_name>/`:
-- `episodes.jsonl`: one `EpisodeResult` per episode
-- `summary.md`, `summary_overall.csv`, `summary_by_class.csv`
-- per-episode `trace.json` (full agent state), `audit.jsonl` and the final `world.json`
+Local models (optional): install [Ollama](https://ollama.com), then
+`ollama pull qwen2.5:3b` (and `llama3.2:3b`, `qwen2.5:1.5b` for the secondary models).
 
-Runs can be resumed: re-running the same config skips episodes that are already done.
+Docker: `docker build -t mcpguardbench . && docker run --rm mcpguardbench` runs the tests;
+`docker compose` brings up Ollama next to the benchmark (see `docker-compose.yml`).
 
-Docker (optional): `docker build -t mcpguardbench . && docker run --rm --network host mcpguardbench`.
+### Configuration and environment variables
+
+Copy `.env.example` to `.env` and fill in only what you use. **Never commit `.env`.**
+
+| Variable | Used for |
+|---|---|
+| `GROQ_API_KEY` | `groq:<model>` providers (gpt-oss-20b/120b, qwen3.8-27b) |
+| `OPENROUTER_API_KEY` | `openrouter:<model>` providers (Llama-3.1-8B / 3.3-70B, MSB overlap) |
+| `OPENAI_COMPAT_BASE_URL`, `OPENAI_COMPAT_API_KEY` | any other OpenAI-compatible server (vLLM, LM Studio) |
+| `OLLAMA_HOST` | Ollama URL (default `http://127.0.0.1:11434`) |
+
+Other configuration lives in files: defenses in `configs/defenses.yaml`, organisation policy
+(internal domain, known payees, DLP patterns) in `data/policy.yaml`, the dev/test split in
+`data/splits.yaml`, experiments in `experiments/configs/*.yaml`.
+
+## Running the system
+
+```bash
+# one episode, live trajectory + verdict (application interface)
+python -m mcpguard.demo --list
+python -m mcpguard.demo --scenario T09-RI-transfer --model ollama:qwen2.5:3b --defense none
+python -m mcpguard.demo --scenario T09-RI-transfer --model ollama:qwen2.5:3b --defense full
+python -m mcpguard.demo --scenario T01-CD-hr-internal --model agent:gullible --defense hitl
+
+# a benchmark run (any models x defenses x seeds), resumable
+python -m mcpguard.eval.run --models ollama:qwen2.5:3b --defenses none llm_guard full \
+    --split test --seeds 0 1 2 --temperature 0.7 --run-name my-run
+
+# inspect results
+python -m mcpguard.eval.trace results/my-run/<model>/<defense>/seed0/episodes/<scenario>/trace.json
+python -m mcpguard.defenses.detector results/my-run/.../audit.jsonl
+python -m mcpguard.eval.report --runs results/my-run --out results/my-report
+python -m mcpguard.eval.failures results/my-run --model ollama:qwen2.5:3b --defense full
+```
+
+Model specs: `ollama:<tag>`, `groq:<model>`, `openrouter:<model>`, `openai-compat:<model>`, and
+the deterministic reference agents `agent:gullible` (obeys every injection it sees: worst case)
+and `agent:ideal` (never does: utility ceiling).
+
+## Reproducing the experiments
+
+`python experiments/reproduce.py <target>` runs the configs below and rebuilds all tables and
+figures in `results/paper/`. Every run is resumable.
+
+| # | Experiment | Config(s) | Command | Output |
+|---|---|---|---|---|
+| E0 | Defense coverage with deterministic agents (supports E4/E5) | `e0_reference_agents.yaml` | `reproduce.py reference` | `results/phase2-reference/` |
+| E1 | Baselines B0 (none) and B1 (safety prompt) | `e1_baseline_local.yaml`, `api_main.yaml` | `reproduce.py local` / `api` | Table 1 |
+| E2 | Base paper's defense (MCIP-style guard) on our data; MSB's reported numbers | `e2_basepaper_local.yaml`, `api_msb_overlap.yaml` | same | Tables 1, 8 |
+| E3 | Proposed system (`full`) | `e3_proposed_local.yaml` | same | Tables 1, 2 |
+| E4 | Gap 1 / Gap 2 / Gap 3 experiments | `e4_gaps_local.yaml` (3 seeds), `e4b_approvers_local.yaml` (1 seed), `api_gaps.yaml` | same | Tables 3, 4, 5 |
+| E5 | Ablation: remove one component of `full` | `e5_ablation_local.yaml`, `api_gaps.yaml` | same | Table 6, `fig_ablation.png` |
+| E6 | Efficiency and reliability | (all runs) | `reproduce.py report` | Table 7 |
+| – | Failure analysis | (all runs) | `reproduce.py report` | `results/paper/failures_*.md` |
+
+All reported numbers use the **test split** (`data/splits.yaml`); the dev split was used only
+for design decisions. LLM runs use temperature 0.7 with seeds 0, 1, 2 (mean ± std over seeds);
+the MCIP-style guard decodes greedily. Reference agents are deterministic (one seed).
+
+Approximate cost on our laptop (i5-8350U, 16 GB, Quadro M2200 4 GB): reference agents about
+3 h; one local 3B model, one defense, one seed about 20-30 min (113 episodes). Groq's free
+tier allows about 200k tokens per model per day, so the API configs take several days.
+
+Sample trajectories for the reported runs (trace, audit log, final world) are in `logs/`;
+full per-episode artefacts are written to `results/<run>/.../episodes/` (git-ignored).
+
+## Gap-resolution table
+
+<!-- GAP_TABLE_START -->
+_Generated by `python experiments/reproduce.py report` from `results/paper/gap_resolution.md`._
+<!-- GAP_TABLE_END -->
+
+## Changes since Phase 1
+
+| Change | Reason |
+|---|---|
+| Fixed dev/test split by task (`data/splits.yaml`); all reported numbers on test | Phase 2 requires a held-out test set |
+| 3 seeds at temperature 0.7 (was 1 seed at temperature 0) | mean ± std over repeated runs; local temperature-0 runs were identical across seeds |
+| +2 confused-deputy variants with internal recipients (128 -> 140 attacked scenarios) | CD succeeded 0% on every Phase 1 model because the only variant mailed an external address (devlog #2) |
+| +6 benign-only tasks T11-T16 (10 -> 16 benign tasks) | measure utility and approval cost on tasks that contain sensitive actions |
+| False-error / tool-transfer responses are injected on the first call only | Phase 1 bug: the attacker's own read was replaced too (devlog #1); FE numbers are not comparable with Phase 1 |
+| Human approval is risk-tiered by default (`hitl_policy`); `hitl-all` keeps Phase 1 behaviour | reduce approvals on benign tasks (devlog #3) |
+| Fatigue and approve-all approvers, audit-log detector | Gap 3 measurements planned in Phase 1 |
+| Deterministic reference agents `agent:gullible` / `agent:ideal` | separate defense coverage from model gullibility (devlog #5) |
+| Qwen model on the primary local runs is qwen2.5:3b (Phase 1: qwen2.5:1.5b) | 1.5B had 80% benign utility in Phase 1; 3B fits our 4 GB GPU; 1.5B kept as a secondary model |
+| Llama-3.x MSB-overlap models via OpenRouter (`api_msb_overlap.yaml`) | Groq no longer serves them (as planned in Phase 1) |
 
 ## Repository layout
 
 ```
-mcpguard/
-  env/world.py              sandbox world: files, mail, bank, tokens, ACLs, violation tracking
-  servers/                  MCP servers (FastMCP): files, mail, bank, attacker_server (parameterised)
-  agent/mcp_hub.py          MCP client hub (stdio sessions, flat namespace, last-wins)
-  agent/loop.py             tool-calling agent loop -> AgentState
-  defenses/gateway.py       allowlist, LLM guard, HITL, audit; scoped creds via launch token
-  defenses/audit.py         hash-chained audit log + verifier
-  providers/                ollama, OpenAI-compatible (Groq/OpenRouter), scripted (tests)
-  eval/scenarios.py         task x attack scenario generator
-  eval/judge.py             deterministic predicates
-  eval/metrics.py           ASR / PUA / NRP / BU / PVR aggregation
-  eval/run.py               CLI
-  eval/plots.py             ASR-by-class and security-utility charts for a run
-  contracts.py              pydantic contracts: Scenario, AgentState, ToolCallRecord, EpisodeResult...
-data/                       world_seed.json, user_tasks.yaml, attacks.yaml, allowlist.json
-configs/                    defenses.yaml and run configs
-docs/                       Phase 1 report (PDF)
-tests/                      unit tests + scripted end-to-end tests
+mcpguard/              the system (the "src/" of the suggested layout)
+  agent/               loop.py (ReAct loop + loop guard), mcp_hub.py (stdio MCP client hub)
+  servers/             files, mail, bank (trusted) and attacker_server (untrusted, parameterised)
+  env/world.py         sandbox world: files, mail, bank, tokens, ACLs, violation tracking
+  defenses/            gateway, approvers, audit log, detector, allowlist builder
+  providers/           ollama, OpenAI-compatible (Groq/OpenRouter), reference agents, scripted
+  eval/                scenarios, judge, runner, run (CLI), metrics, stats, report, failures, trace, plots
+  demo.py              single-episode live demo
+data/                  world seed, user tasks, attacks, policy, splits, allowlist
+configs/defenses.yaml  every defense configuration (gap components are switches)
+experiments/           configs for E0-E5, reproduce.py, sample_logs.py
+results/               phase1-* (Phase 1), phase2-* (Phase 2 runs), paper/ (tables + figures)
+logs/                  sample agent trajectories and audit logs for the reported runs
+paper/                 IEEE two-column LaTeX source of the Phase 2 paper
+docs/                  devlog.md, Phase 1 report
+tests/                 unit tests and end-to-end episodes over real MCP servers
 ```
 
-## Phase 1 baseline results
+## Team and contributions
 
-Undefended agent (B0) across four open-weight models, plus the safety-prompt baseline (B1) on the local model. Infra errors are excluded from all metrics.
-
-| Model | Defense | Episodes | BU | ASR | PUA | NRP | PVR |
-|---|---|---|---|---|---|---|---|
-| qwen2.5:1.5b (local) | none | 138 | 80.0 | 24.2 | 57.0 | 43.2 | 9.4 |
-| qwen2.5:1.5b (local) | safety_prompt | 138 | 80.0 | 24.2 | 53.9 | 40.9 | 7.0 |
-| qwen3.8-27b (Groq) | none | 61 | n/a | 28.3 | 83.3 | 59.7 | 1.7 |
-| gpt-oss-20b (Groq) | none | 110 | 100.0 | 55.4 | 72.3 | 32.2 | 22.8 |
-| gpt-oss-120b (Groq) | none | 66 | 100.0 | 70.0 | 81.7 | 24.5 | 31.7 |
-
-Name collision succeeds in 100% of episodes on every model. The safety prompt does not change ASR. Privilege escalation succeeds in every gpt-oss episode. Per-run details are in `results/phase1-*/summary.md`, and the analysis is in Section B.12 of the [Phase 1 report](docs/Phase1_G1-02_23I-0671.pdf).
-
-Groq's free tier caps each model at 200k tokens per day, so the API models ran stratified subsets (6 scenarios per class); see the report for exact coverage.
-
-## Roadmap (Phase 2)
-
-- **Gap 1:** ablation of allowlist / scoped credentials vs. MSB's detector defense (MCIP-style guard), across models.
-- **Gap 2:** privilege-escalation and confused-deputy evaluation under over-privileged vs. scoped tokens.
-- **Gap 3:** cost of human oversight (approvals per task, approver fatigue models) and audit-log detection recall.
+| Member | Phase 2 responsibilities |
+|---|---|
+| Zaid Bin Umer | gateway (risk-tiered approval, approvers, argument verification), audit-log detector, attack catalogue (CD variants, FE fix), MCP hub robustness, Docker release |
+| Saud ur Rahman | evaluation protocol (splits, seeds), runner reliability, reference agents, metrics/statistics, report and failure analysis, experiments, paper |
 
 ## Citation of the base benchmark
 
-D. Zhang, Z. Li, X. Luo, X. Liu, P. Li, W. Xu, "MCP Security Bench (MSB): Benchmarking Attacks Against Model Context Protocol in LLM Agents," *ICLR 2026*.
+D. Zhang, Z. Li, X. Luo, X. Liu, P. Li, W. Xu, "MCP Security Bench (MSB): Benchmarking Attacks
+Against Model Context Protocol in LLM Agents," *ICLR 2026*.
 
 License: MIT.
