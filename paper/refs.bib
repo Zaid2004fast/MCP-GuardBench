@@ -1,0 +1,288 @@
+% References for the Phase 2 paper.
+% Entries marked "% CHECK" have an identifier (DOI / arXiv id / pages) that must be verified
+% against the publisher page before submission. arXiv DOIs have the form 10.48550/arXiv.<id>.
+
+% ------------------------------------------------------------------ base paper and MCP benchmarks
+@inproceedings{zhang2026msb,
+  author    = {Zhang, Dongsen and Li, Zekun and Luo, Xu and Liu, Xuannan and Li, Peipei and Xu, Wenjun},
+  title     = {{MCP Security Bench (MSB)}: Benchmarking Attacks Against {Model Context Protocol} in {LLM} Agents},
+  booktitle = {Proc. Int. Conf. Learning Representations (ICLR)},
+  year      = {2026},
+  url       = {https://iclr.cc/virtual/2026/poster/10007929}
+}
+@inproceedings{zong2026mcpsafetybench,
+  author    = {Zong, Xuanjun and Shen, Zhiqi and Wang, Lei and Lan, Yunshi and Yang, Chao},
+  title     = {{MCP-SafetyBench}: A Benchmark for Safety Evaluation of Large Language Models with Real-World {MCP} Servers},
+  booktitle = {Proc. Int. Conf. Learning Representations (ICLR)},
+  year      = {2026}
+}
+@inproceedings{wang2026mcptox,
+  author    = {Wang, Zhiqiang and Gao, Yichao and Wang, Yanting and Liu, Suyuan and Sun, Haifeng and Cheng, Haoran and Shi, Guanquan and Du, Haohua and Li, Xiangyang},
+  title     = {{MCPTox}: A Benchmark for Tool Poisoning on Real-World {MCP} Servers},
+  booktitle = {Proc. AAAI Conf. Artificial Intelligence},
+  volume    = {40}, number = {42}, pages = {35811--35819},
+  year      = {2026},
+  doi       = {10.1609/aaai.v40i42.40895}
+}
+@inproceedings{jing2025mcip,
+  author    = {Jing, Huihao and others},
+  title     = {{MCIP}: Protecting {MCP} Safety via Model Contextual Integrity Protocol},
+  booktitle = {Proc. Conf. Empirical Methods in Natural Language Processing (EMNLP)},
+  pages     = {1177--1194},
+  address   = {Suzhou, China},
+  year      = {2025}
+  % CHECK: add the ACL Anthology DOI (10.18653/v1/2025.emnlp-main.*)
+}
+@article{huang2026mcpthreat,
+  author  = {Huang, Charoes and Huang, Xin and Tran, Ngoc Phu and Milani Fard, Amin},
+  title   = {{Model Context Protocol} Threat Modeling and Analysis of Vulnerabilities to Prompt Injection with Tool Poisoning},
+  journal = {J. Cybersecurity and Privacy},
+  volume  = {6}, number = {3}, pages = {84},
+  year    = {2026},
+  doi     = {10.3390/jcp6030084}
+}
+@misc{mcpspec2025,
+  author       = {{Anthropic}},
+  title        = {{Model Context Protocol} Specification},
+  year         = {2025},
+  howpublished = {\url{https://modelcontextprotocol.io/specification}}
+}
+
+% ------------------------------------------------------------------ agent security benchmarks / attacks
+@inproceedings{zhang2025asb,
+  author    = {Zhang, Hanrong and Huang, Jingyuan and Mei, Kai and Yao, Yifei and Wang, Zhenting and Zhan, Chenlu and Wang, Hongwei and Zhang, Yongfeng},
+  title     = {Agent Security Bench ({ASB}): Formalizing and Benchmarking Attacks and Defenses in {LLM}-based Agents},
+  booktitle = {Proc. Int. Conf. Learning Representations (ICLR)},
+  year      = {2025},
+  doi       = {10.48550/arXiv.2410.02644}
+}
+@inproceedings{shi2026toolhijacker,
+  author    = {Shi, Jiawen and Yuan, Zenghui and Tie, Guiyao and Zhou, Pan and Gong, Neil Zhenqiang and Sun, Lichao},
+  title     = {Prompt Injection Attack to Tool Selection in {LLM} Agents},
+  booktitle = {Proc. Network and Distributed System Security Symp. (NDSS)},
+  address   = {San Diego, CA, USA},
+  year      = {2026},
+  doi       = {10.48550/arXiv.2504.19793} % CHECK arXiv id; prefer the NDSS DOI 10.14722/ndss.2026.*
+}
+@inproceedings{debenedetti2024agentdojo,
+  author    = {Debenedetti, Edoardo and Zhang, Jie and Balunovi{\'c}, Mislav and Beurer-Kellner, Luca and Fischer, Marc and Tram{\`e}r, Florian},
+  title     = {{AgentDojo}: A Dynamic Environment to Evaluate Prompt Injection Attacks and Defenses for {LLM} Agents},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS), Datasets and Benchmarks Track},
+  year      = {2024},
+  doi       = {10.48550/arXiv.2406.13352}
+}
+@inproceedings{zhan2024injecagent,
+  author    = {Zhan, Qiusi and Liang, Zhixiang and Ying, Zifan and Kang, Daniel},
+  title     = {{InjecAgent}: Benchmarking Indirect Prompt Injections in Tool-Integrated Large Language Model Agents},
+  booktitle = {Findings of the Association for Computational Linguistics: ACL 2024},
+  year      = {2024},
+  doi       = {10.48550/arXiv.2403.02691}
+}
+@inproceedings{greshake2023indirect,
+  author    = {Greshake, Kai and Abdelnabi, Sahar and Mishra, Shailesh and Endres, Christoph and Holz, Thorsten and Fritz, Mario},
+  title     = {Not What You've Signed Up For: Compromising Real-World {LLM}-Integrated Applications with Indirect Prompt Injection},
+  booktitle = {Proc. 16th ACM Workshop on Artificial Intelligence and Security (AISec)},
+  pages     = {79--90},
+  year      = {2023},
+  doi       = {10.1145/3605764.3623985}
+}
+@misc{perez2022ignore,
+  author = {Perez, F{\'a}bio and Ribeiro, Ian},
+  title  = {Ignore Previous Prompt: Attack Techniques for Language Models},
+  year   = {2022},
+  note   = {NeurIPS ML Safety Workshop},
+  doi    = {10.48550/arXiv.2211.09527}
+}
+@inproceedings{liu2024formalizing,
+  author    = {Liu, Yupei and Jia, Yuqi and Geng, Runpeng and Jia, Jinyuan and Gong, Neil Zhenqiang},
+  title     = {Formalizing and Benchmarking Prompt Injection Attacks and Defenses},
+  booktitle = {Proc. 33rd USENIX Security Symp.},
+  year      = {2024},
+  doi       = {10.48550/arXiv.2310.12815}
+}
+
+% ------------------------------------------------------------------ defenses
+@inproceedings{zhu2025melon,
+  author    = {Zhu, Kaijie and Yang, Xianjun and Wang, Jindong and Guo, Wenbo and Wang, William Yang},
+  title     = {{MELON}: Provable Defense Against Indirect Prompt Injection Attacks in {AI} Agents},
+  booktitle = {Proc. Int. Conf. Machine Learning (ICML)},
+  year      = {2025},
+  doi       = {10.48550/arXiv.2502.05174} % CHECK arXiv id
+}
+@inproceedings{li2025drift,
+  author    = {Li, Hao and Liu, Xiaogeng and Chiu, Hung-Chun and Li, Dianqi and Zhang, Ning and Xiao, Chaowei},
+  title     = {{DRIFT}: Dynamic Rule-Based Defense with Injection Isolation for Securing {LLM} Agents},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2025}
+  % CHECK: add DOI / arXiv id
+}
+@inproceedings{an2025ipiguard,
+  author    = {An, Hengyu and Zhang, Jinghuai and Du, Tianyu and Zhou, Chunyi and Li, Qingming and Lin, Tao and Ji, Shouling},
+  title     = {{IPIGuard}: A Novel Tool Dependency Graph-Based Defense Against Indirect Prompt Injection in {LLM} Agents},
+  booktitle = {Proc. Conf. Empirical Methods in Natural Language Processing (EMNLP)},
+  pages     = {1023--1039},
+  address   = {Suzhou, China},
+  year      = {2025}
+  % CHECK: add the ACL Anthology DOI
+}
+@inproceedings{jia2025taskshield,
+  author    = {Jia, Feiran and Wu, Tong and Qin, Xin and Squicciarini, Anna},
+  title     = {The Task Shield: Enforcing Task Alignment to Defend Against Indirect Prompt Injection in {LLM} Agents},
+  booktitle = {Proc. 63rd Annu. Meeting of the Association for Computational Linguistics (ACL)},
+  pages     = {29680--29697},
+  address   = {Vienna, Austria},
+  year      = {2025},
+  doi       = {10.18653/v1/2025.acl-long.1435}
+}
+@inproceedings{wang2026agentspec,
+  author    = {Wang, Haoyu and Poskitt, Christopher M. and Sun, Jun},
+  title     = {{AgentSpec}: Customizable Runtime Enforcement for Safe and Reliable {LLM} Agents},
+  booktitle = {Proc. IEEE/ACM Int. Conf. Software Engineering (ICSE)},
+  address   = {Rio de Janeiro, Brazil},
+  year      = {2026},
+  doi       = {10.48550/arXiv.2503.18666} % CHECK arXiv id
+}
+@misc{debenedetti2025camel,
+  author = {Debenedetti, Edoardo and Shumailov, Ilia and Fan, Tianqi and Hayes, Jamie and Carlini, Nicholas and Fabian, Daniel and Kern, Christoph and Shi, Chongyang and Terzis, Andreas and Tram{\`e}r, Florian},
+  title  = {Defeating Prompt Injections by Design},
+  year   = {2025},
+  doi    = {10.48550/arXiv.2503.18813}
+}
+@misc{shi2025progent,
+  author = {Shi, Tianneng and He, Jingxuan and Wang, Zhun and Li, Hongwei and Wu, Linyu and Guo, Wenbo and Song, Dawn},
+  title  = {Progent: Programmable Privilege Control for {LLM} Agents},
+  year   = {2025},
+  doi    = {10.48550/arXiv.2504.11703}
+}
+@inproceedings{chen2025struq,
+  author    = {Chen, Sizhe and Piet, Julien and Sitawarin, Chawin and Wagner, David},
+  title     = {{StruQ}: Defending Against Prompt Injection with Structured Queries},
+  booktitle = {Proc. 34th USENIX Security Symp.},
+  year      = {2025},
+  doi       = {10.48550/arXiv.2402.06363}
+}
+@misc{chen2024secalign,
+  author = {Chen, Sizhe and Zharmagambetov, Arman and Mahloujifar, Saeed and Chaudhuri, Kamalika and Wagner, David and Guo, Chuan},
+  title  = {{SecAlign}: Defending Against Prompt Injection with Preference Optimization},
+  year   = {2024},
+  doi    = {10.48550/arXiv.2410.05451}
+}
+@misc{hines2024spotlighting,
+  author = {Hines, Keegan and Lopez, Gary and Hall, Matthew and Zarfati, Federico and Zunger, Yonatan and Kiciman, Emre},
+  title  = {Defending Against Indirect Prompt Injection Attacks With Spotlighting},
+  year   = {2024},
+  doi    = {10.48550/arXiv.2403.14720}
+}
+@misc{inan2023llamaguard,
+  author = {Inan, Hakan and Upasani, Kartikeya and Chi, Jianfeng and others},
+  title  = {Llama Guard: {LLM}-based Input-Output Safeguard for Human-{AI} Conversations},
+  year   = {2023},
+  doi    = {10.48550/arXiv.2312.06674}
+}
+
+% ------------------------------------------------------------------ agents and models
+@inproceedings{yao2023react,
+  author    = {Yao, Shunyu and Zhao, Jeffrey and Yu, Dian and Du, Nan and Shafran, Izhak and Narasimhan, Karthik and Cao, Yuan},
+  title     = {{ReAct}: Synergizing Reasoning and Acting in Language Models},
+  booktitle = {Proc. Int. Conf. Learning Representations (ICLR)},
+  year      = {2023},
+  doi       = {10.48550/arXiv.2210.03629}
+}
+@inproceedings{schick2023toolformer,
+  author    = {Schick, Timo and Dwivedi-Yu, Jane and Dess{\`i}, Roberto and Raileanu, Roberta and Lomeli, Maria and Hambro, Eric and Zettlemoyer, Luke and Cancedda, Nicola and Scialom, Thomas},
+  title     = {Toolformer: Language Models Can Teach Themselves to Use Tools},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2023},
+  doi       = {10.48550/arXiv.2302.04761}
+}
+@inproceedings{qin2024toolllm,
+  author    = {Qin, Yujia and others},
+  title     = {{ToolLLM}: Facilitating Large Language Models to Master 16000+ Real-World {APIs}},
+  booktitle = {Proc. Int. Conf. Learning Representations (ICLR)},
+  year      = {2024},
+  doi       = {10.48550/arXiv.2307.16789}
+}
+@misc{qwen2025qwen25,
+  author = {{Qwen Team}},
+  title  = {Qwen2.5 Technical Report},
+  year   = {2024},
+  doi    = {10.48550/arXiv.2412.15115}
+}
+@misc{grattafiori2024llama3,
+  author = {Grattafiori, Aaron and others},
+  title  = {The {Llama 3} Herd of Models},
+  year   = {2024},
+  doi    = {10.48550/arXiv.2407.21783}
+}
+@misc{openai2025gptoss,
+  author = {{OpenAI}},
+  title  = {gpt-oss-120b \& gpt-oss-20b Model Card},
+  year   = {2025},
+  doi    = {10.48550/arXiv.2508.10925} % CHECK arXiv id
+}
+
+% ------------------------------------------------------------------ security foundations
+@article{hardy1988confused,
+  author  = {Hardy, Norm},
+  title   = {The Confused Deputy (or Why Capabilities Might Have Been Invented)},
+  journal = {ACM SIGOPS Operating Systems Review},
+  volume  = {22}, number = {4}, pages = {36--38},
+  year    = {1988},
+  doi     = {10.1145/54289.871709}
+}
+@article{saltzer1975protection,
+  author  = {Saltzer, Jerome H. and Schroeder, Michael D.},
+  title   = {The Protection of Information in Computer Systems},
+  journal = {Proc. IEEE},
+  volume  = {63}, number = {9}, pages = {1278--1308},
+  year    = {1975},
+  doi     = {10.1109/PROC.1975.9939}
+}
+@article{schneier1999audit,
+  author  = {Schneier, Bruce and Kelsey, John},
+  title   = {Secure Audit Logs to Support Computer Forensics},
+  journal = {ACM Trans. Information and System Security},
+  volume  = {2}, number = {2}, pages = {159--176},
+  year    = {1999},
+  doi     = {10.1145/317087.317089}
+}
+@techreport{nist2020sp80053,
+  author      = {{Joint Task Force}},
+  title       = {Security and Privacy Controls for Information Systems and Organizations},
+  institution = {National Institute of Standards and Technology},
+  number      = {NIST SP 800-53 Rev. 5},
+  year        = {2020},
+  doi         = {10.6028/NIST.SP.800-53r5}
+}
+@misc{owasp2025llm,
+  author       = {{OWASP Foundation}},
+  title        = {{OWASP} Top 10 for Large Language Model Applications 2025},
+  year         = {2024},
+  howpublished = {\url{https://genai.owasp.org/llm-top-10/}}
+}
+@article{parasuraman2010complacency,
+  author  = {Parasuraman, Raja and Manzey, Dietrich H.},
+  title   = {Complacency and Bias in Human Use of Automation: An Attentional Integration},
+  journal = {Human Factors},
+  volume  = {52}, number = {3}, pages = {381--410},
+  year    = {2010},
+  doi     = {10.1177/0018720810376055}
+}
+
+% ------------------------------------------------------------------ statistics
+@article{mcnemar1947,
+  author  = {McNemar, Quinn},
+  title   = {Note on the Sampling Error of the Difference Between Correlated Proportions or Percentages},
+  journal = {Psychometrika},
+  volume  = {12}, number = {2}, pages = {153--157},
+  year    = {1947},
+  doi     = {10.1007/BF02295996}
+}
+@article{efron1979bootstrap,
+  author  = {Efron, Bradley},
+  title   = {Bootstrap Methods: Another Look at the Jackknife},
+  journal = {The Annals of Statistics},
+  volume  = {7}, number = {1}, pages = {1--26},
+  year    = {1979},
+  doi     = {10.1214/aos/1176344552}
+}

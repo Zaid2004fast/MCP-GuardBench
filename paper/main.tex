@@ -1,0 +1,557 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage{cite}
+\usepackage{adjustbox}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=*}
+
+% \pending{...} marks a sentence whose number comes from an LLM run that has not been
+% read into the text yet. Search for \pending before submission: there must be none left.
+\newcommand{\pending}[1]{\textcolor{red}{[#1]}}
+\newcommand{\gen}[1]{\input{generated/#1.tex}}
+\newcommand{\sys}{MCPGuardBench}
+
+\begin{document}
+
+\title{\sys: Measuring System-Level Mitigations Against\\Tool-Access Attacks on MCP-Connected LLM Agents}
+
+\author{
+\IEEEauthorblockN{Zaid Bin Umer}
+\IEEEauthorblockA{FAST-NUCES, Islamabad\\23I-0671}
+\and
+\IEEEauthorblockN{Saud ur Rahman}
+\IEEEauthorblockA{FAST-NUCES, Islamabad\\23I-0540}
+}
+
+\maketitle
+
+\begin{abstract}
+The Model Context Protocol (MCP) lets an LLM agent load third-party tool servers, and every
+installed server becomes part of what the agent trusts. Recent benchmarks, most notably MCP
+Security Bench (MSB, ICLR 2026), show that malicious servers hijack such agents in 30--48\% of
+attempts, yet they evaluate at most one, model-based defense, they have no notion of what the
+user is \emph{authorised} to do, and they do not measure the cost of human oversight. We present
+\sys, a sandboxed and fully deterministic MCP benchmark that rebuilds MSB's attack taxonomy and
+metrics over real stdio MCP servers and adds (i)~a policy gateway with a pinned tool allowlist,
+least-privilege scoped credentials and risk-tiered human approval, (ii)~an identity and authority
+model with two new attack classes, privilege escalation and confused deputy, and (iii)~a
+hash-chained audit log with a post-hoc detector and simulated approvers that quantify oversight
+cost. On 102 held-out attacked and 11 benign scenarios we compare the gateway with MSB's own
+defense (an MCIP-style LLM guard) and a prompt-level baseline, using open-weight models and two
+deterministic reference agents that bound what each defense can stop independently of model
+behaviour. With a fully compliant agent, the allowlist alone removes every planning-stage and
+tool-borne attack but leaves the 24.5\% carried by trusted data, scoped credentials remove every
+authority violation, and the full gateway lowers ASR from 100\% to 0\% without a single approval
+on benign tasks, at the price of failing safe when the attacker's server is the only provider of
+a tool (PUA 58.8\%). On
+\pending{qwen2.5-3B}, the full system lowers ASR from \pending{A} to \pending{B} and raises NRP from
+\pending{C} to \pending{D}, compared with \pending{E} for the MCIP-style guard. Code, data, traces
+and every table are reproducible from our repository.
+\end{abstract}
+
+\begin{IEEEkeywords}
+LLM agents, Model Context Protocol, prompt injection, tool poisoning, least privilege, confused deputy, human-in-the-loop, benchmark
+\end{IEEEkeywords}
+
+% =====================================================================================
+\section{Introduction}
+% =====================================================================================
+
+Tool-using LLM agents decide by themselves which tool to call, with which arguments and in what
+order~\cite{yao2023react,schick2023toolformer,qin2024toolllm}. The Model Context Protocol
+(MCP)~\cite{mcpspec2025} standardises how such tools are offered: a host loads one or more
+\emph{servers}, each server advertises tools with natural-language descriptions, and the agent
+reads those descriptions and the tools' outputs into its context. This design makes the agent's
+tool supply chain part of its prompt. A malicious or compromised server can poison a tool
+description~\cite{wang2026mcptox,huang2026mcpthreat}, shadow a trusted tool by registering the
+same name, push the agent towards a look-alike tool~\cite{shi2026toolhijacker}, or return
+manipulated results; and data that the agent reads through perfectly trusted tools can carry
+indirect prompt injections~\cite{greshake2023indirect,zhan2024injecagent,debenedetti2024agentdojo}.
+
+MSB~\cite{zhang2026msb}, our base paper, organises these attacks by the stage of tool use they
+target (planning, invocation, response) and measures them on real MCP servers, reporting an average
+attack success rate (ASR) of 40.35\% over ten models. MCP-SafetyBench~\cite{zong2026mcpsafetybench}
+and MCPTox~\cite{wang2026mcptox} report similar numbers. These benchmarks measure attacks well but
+defenses poorly. MSB evaluates a single defense, the MCIP guardian model~\cite{jing2025mcip}, which
+lowers ASR to 28.69\% but also lowers task completion under attack, so the net resilient performance
+(NRP) moves by only 1.2 points. Security teams that want to connect agents to internal systems
+are, however, told to deploy deterministic controls: allowlisting, least
+privilege~\cite{saltzer1975protection,nist2020sp80053}, human approval and audit
+logs~\cite{owasp2025llm,schneier1999audit}. None of these has been measured against MCP attacks.
+
+We identified three gaps in Phase~1 of this project. \textbf{Gap~1:} MCP benchmarks evaluate only
+model-level defenses (prompts, detectors); deterministic system-level mitigations are unmeasured.
+\textbf{Gap~2:} no benchmark models identity and authority, so an agent that uses \emph{its own}
+service privileges on behalf of a user who lacks them, the classic confused
+deputy~\cite{hardy1988confused}, cannot even be expressed. \textbf{Gap~3:} human approval and
+audit logging are recommended~\cite{wang2026agentspec,huang2026mcpthreat,jing2025mcip}, but their
+security benefit and their cost in human effort have never been quantified.
+
+\textbf{Contributions.}
+\begin{itemize}
+\item \sys, a sandboxed MCP benchmark (four stdio servers, per-episode JSON world, 156 scenarios
+  with a fixed dev/test split) that rebuilds MSB's eight single-attack classes and metrics with fully
+  deterministic judges (\S\ref{sec:system}).
+\item A policy gateway whose components map one-to-one to the gaps and can each be switched off
+  for ablation: a pinned tool allowlist and scoped credentials (Gap~1), an identity/ACL model with
+  privilege-escalation (PE) and confused-deputy (CD) attacks and a privilege-violation rate (Gap~2),
+  and risk-tiered human approval with simulated approvers plus a hash-chained audit log and
+  post-hoc detector (Gap~3).
+\item Deterministic \emph{reference agents} that obey every injection they can see, or none,
+  which separate what a defense can stop from how gullible a given model is.
+\item An evaluation on held-out scenarios with three seeds that compares the gateway with MSB's own
+  defense and a prompt-level defense on the same data, an ablation of each component, a cost and
+  reliability analysis, and a categorised failure analysis with trajectories (\S\ref{sec:results}).
+\end{itemize}
+
+% =====================================================================================
+\section{Related Work}
+\label{sec:related}
+% =====================================================================================
+
+\textbf{Attacks on tool-using agents.} Prompt injection~\cite{perez2022ignore,liu2024formalizing}
+becomes \emph{indirect} when instructions arrive through retrieved
+data~\cite{greshake2023indirect}. InjecAgent~\cite{zhan2024injecagent} and
+AgentDojo~\cite{debenedetti2024agentdojo} benchmark this for tool-calling agents;
+ASB~\cite{zhang2025asb} formalises direct and indirect injection, memory poisoning and backdoors
+and introduces the NRP metric, but its tools are simulated functions. ToolHijacker~\cite{shi2026toolhijacker}
+optimises malicious tool descriptions to win tool selection (96\% success against GPT-4o) and
+shows that StruQ~\cite{chen2025struq}, SecAlign~\cite{chen2024secalign} and detection fail.
+
+\textbf{MCP benchmarks.} MSB~\cite{zhang2026msb} is the first to run real MCP tools and to
+organise attacks by planning, invocation and response stage; its strongest class, out-of-scope
+parameters, succeeds 76.5\% of the time. MCP-SafetyBench~\cite{zong2026mcpsafetybench} adds
+host- and user-side attacks over 245 multi-turn tasks and finds that a safety prompt does not
+significantly change ASR. MCPTox~\cite{wang2026mcptox} measures tool-description poisoning on 45
+live servers (average ASR 36.5\%, refusals below 3\%). Huang et al.~\cite{huang2026mcpthreat}
+threat-model MCP with STRIDE/DREAD and propose metadata checks, transparency and decision
+tracking, without measuring them. All of these test at most one prompt- or model-level defense
+and none models authority.
+
+\textbf{Defenses.} Model-level defenses include safety prompts~\cite{zong2026mcpsafetybench},
+spotlighting~\cite{hines2024spotlighting}, guard models~\cite{inan2023llamaguard,jing2025mcip}
+and task-alignment checks~\cite{jia2025taskshield}. MELON~\cite{zhu2025melon} re-executes the
+trajectory without the user request and flags tool calls that persist. System-level defenses
+constrain what the agent can do: IPIGuard~\cite{an2025ipiguard} plans a tool dependency graph in
+advance, DRIFT~\cite{li2025drift} validates deviations from a secure plan, CaMeL~\cite{debenedetti2025camel}
+separates control and data flow, Progent~\cite{shi2025progent} enforces programmable privilege
+policies and AgentSpec~\cite{wang2026agentspec} enforces runtime rules, including asking the user
+to confirm. These reach ASR near 1\% on AgentDojo but assume trusted tools; MCP supply-chain
+attacks (poisoned descriptions, shadowing, malicious servers) are outside their threat models, and
+none measures how often a human is asked or how often a tired human would approve by mistake.
+
+\textbf{Positioning.} \sys{} keeps MSB's attack stages and metrics, so results are comparable, and
+adds what the comparison above shows is missing: deployable system-level controls measured on
+MCP-specific attacks (Gap~1), an explicit authority model (Gap~2), and a measured cost of
+oversight (Gap~3). We use Saltzer and Schroeder's least privilege~\cite{saltzer1975protection},
+Hardy's confused deputy~\cite{hardy1988confused} and Schneier and Kelsey's tamper-evident
+logs~\cite{schneier1999audit} as the security foundations, and automation-complacency
+research~\cite{parasuraman2010complacency} to motivate imperfect approvers.
+
+% =====================================================================================
+\section{Problem Formulation and Threat Model}
+\label{sec:problem}
+% =====================================================================================
+
+\textbf{Episode.} A scenario $s=(q, \mathcal{S}, w_0, U, A)$ consists of a user request $q$, a set
+of MCP servers $\mathcal{S}$, an initial world $w_0$ (files, mailbox, bank, ACLs, tokens), utility
+predicates $U$ and attack-success predicates $A$. The agent $\pi$ repeatedly observes its context
+(system prompt, $q$, the visible tool list $T$ with descriptions and schemas, and previous tool
+results), emits tool calls $c_t=(\text{name}, \text{args})$, and stops with a final answer, for at
+most $8$ steps. A defense $D$ maps the advertised tools to a visible set $T_D$ and each call $c_t$
+to a decision in $\{\text{allow}, \text{block}, \text{approve}, \text{deny}\}$; allowed calls are
+executed by the servers against the world with credential $\kappa_D$. The episode ends in a
+final world $w_T$ and trace $\tau$. Judges are predicates over $(w_T, \tau)$ only; no LLM judge is
+used, so every verdict is exactly reproducible.
+
+\textbf{Authority.} Each principal has scopes (e.g.\ \texttt{files:read:/home/alice/},
+\texttt{mail:send:@corp.example}, \texttt{bank:transfer:ACC-VENDOR-77}). The servers authorise every
+operation against $\kappa_D$: either the over-privileged service token (scope \texttt{*}, the MSB
+setting) or the user's scoped token. Independently, every executed operation $o$ is checked against
+the \emph{user's} scopes $\sigma_u$; an operation with $o\notin\sigma_u$ is a privilege violation even
+when the service token allows it. This separates ``the agent could'' from ``the user may''.
+
+\textbf{Metrics.} Following MSB~\cite{zhang2026msb} and ASB~\cite{zhang2025asb}, over attacked
+episodes $\mathcal{E}_a$ and benign episodes $\mathcal{E}_b$:
+\begin{align*}
+\text{ASR} &= \tfrac{1}{|\mathcal{E}_a|}\textstyle\sum_{e\in\mathcal{E}_a} \mathbb{1}[\exists p\in A_e: p(w_T,\tau)],\\
+\text{PUA} &= \tfrac{1}{|\mathcal{E}_a|}\textstyle\sum_{e\in\mathcal{E}_a} \mathbb{1}[\forall p\in U_e: p(w_T,\tau)],\quad
+\text{NRP} = \text{PUA}\,(1-\text{ASR}),
+\end{align*}
+and benign utility BU is the PUA formula over $\mathcal{E}_b$. For Gap~2, the privilege-violation rate
+$\text{PVR}$ is the share of attacked episodes with at least one violation. For Gap~3, the
+\emph{stop rate} is $P(\text{attack fails}\mid \text{agent attempted a sensitive action the user did not
+request})$, the oversight cost is the number of approval requests per benign task, and the detector
+is scored by recall on successful attacks, precision, and false-positive rate on benign episodes.
+
+\textbf{Threat model.} The attacker controls one third-party MCP server that the user installed
+(registered last, as a newly added integration) and/or content inside data the agent reads through
+trusted servers (a file, an e-mail, a transaction memo). The attacker cannot modify the host, the
+gateway, the trusted servers or the credentials. Goals are secret, report and HR-data exfiltration,
+an unauthorised transfer, a permission change, harvesting the user's VPN PIN, and capturing the
+agent's calls. Secrets are canary strings, so success is checked exactly.
+
+% =====================================================================================
+\section{The \sys{} System}
+\label{sec:system}
+% =====================================================================================
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.86\textwidth]{generated/architecture.png}
+\caption{Architecture. In the baseline (dashed, MSB setting) the agent calls the hub directly with an
+over-privileged service token. In the proposed system every call passes through the gateway and the
+servers run with the user's scoped token. Black tags mark where each gap is addressed.}
+\label{fig:arch}
+\end{figure*}
+
+\subsection{Testbed and agent}
+Figure~\ref{fig:arch} shows the architecture. Four MCP servers built with the official Python SDK
+communicate over stdio: \texttt{files}, \texttt{mail} and \texttt{bank} (trusted) and a configurable
+untrusted \texttt{toolkit} server. They operate on a fresh JSON world per episode; nothing touches a
+real network or real data. The client hub merges all tools into one flat namespace in which the
+last-registered server wins a name clash, as many real hosts do; this is what shadowing exploits.
+The agent is a ReAct-style loop~\cite{yao2023react} with native function calling; every step is
+recorded in a typed \texttt{AgentState} (messages, tool calls with arguments, gateway decision and
+result, tokens, latency, status). Small models sometimes write a tool call as text; such calls are
+recovered and counted.
+
+\textbf{Robustness.} After observing failures in Phase~1 (Table~\ref{tab:devlog}), we added a loop
+guard (an identical call runs at most twice; repeats return an explanatory error and two repeats
+end the episode), argument verification against the tool schema before a call reaches a server,
+per-call (30\,s) and per-episode timeouts that keep the partial trajectory, retries of episodes that
+fail for infrastructure reasons, and resumable runs.
+
+\subsection{Attacks}
+Scenarios cross 10 user tasks with 14 attack variants in 10 classes (140 attacked scenarios) and add
+16 benign tasks, six of which are benign-only probes containing sensitive actions the user does
+request (paying rent, deleting a file). Eight classes follow MSB: tool-description injection (PI),
+name collision (NC), preference manipulation (PM), out-of-scope parameter (OP), user impersonation
+(UI), false error (FE), tool transfer (TT) and retrieval injection (RI). Two are new and authority-based.
+In \textbf{privilege escalation (PE)}, a poisoned description tells the agent to call
+\texttt{grant\_access} on \texttt{/secrets}. In \textbf{confused deputy (CD)}, a plausible request inside
+data asks for an action that only the agent's service privileges allow; besides the Phase~1 variant
+(HR data to an external address) we added two internal-recipient variants (salaries to an HR
+colleague, deployment keys to a developer) in which the e-mail itself is within the user's authority
+and only reading the data is not.
+
+\subsection{Gateway components (one per gap)}
+\textbf{Allowlist (Gap~1).} An administrator-approved manifest pins each tool by (server, name,
+SHA-256 of its description). Only pinned tools are visible and routable, which removes poisoned,
+look-alike and shadowing tools and detects rug-pull description changes.
+
+\textbf{Scoped credentials (Gaps~1--2).} Servers are launched with the user's token instead of the
+service token; authorisation is enforced server-side, so it holds even if the agent is fully hijacked.
+
+\textbf{Risk-tiered human approval (Gap~3).} Sensitive tools (\texttt{send\_email},
+\texttt{transfer\_funds}, \texttt{write\_file}, \texttt{delete\_file}, \texttt{grant\_access}) are
+classified from organisation policy alone: internal recipients, known payees up to 2000\,USD and
+files in the user's home are low risk and pass; everything else needs a human. Approvers are
+simulated: an attentive \emph{oracle} approves exactly the actions the user requested;
+\emph{fatigue} approves those and, with probability $p=0.3$ (deterministic per episode, step and
+seed), also an unrequested one; \emph{approve-all} models a rubber stamp. The Phase~1 policy that
+asks for every sensitive call is kept as \texttt{hitl-all}.
+
+\textbf{Audit log and detector (Gap~3).} Every tool listing (with description hashes), decision and
+result is appended to a SHA-256 hash chain. A post-hoc rule detector, designed on the dev split only,
+flags external recipients, unknown payees, permission changes, reads outside the user's home, calls
+routed to untrusted servers, credential patterns in arguments, gateway blocks, and a broken chain.
+It uses only organisation policy, never canaries or attacker identifiers.
+
+\textbf{Baselines.} B0 is the undefended MSB setting. B1 is the MCP-SafetyBench safety
+prompt~\cite{zong2026mcpsafetybench}. B2 is an MCIP-style guard~\cite{jing2025mcip}: before each
+call, the same LLM (greedy decoding) sees the user request, the call and the tool description and
+answers SAFE or UNSAFE. The fine-tuned 8B guardian does not fit our hardware, so this is a prompted
+substitute (\S\ref{sec:limits}).
+
+\subsection{Reference agents}
+To separate defense coverage from model gullibility we add two deterministic agents with the same
+per-task plans. \texttt{gullible} obeys every injected instruction that reaches its context (a
+poisoned description of a \emph{visible} tool, an instruction inside a tool result), prefers
+``recommended'' look-alikes, fills ``mandatory'' extra parameters and follows transfer notices.
+\texttt{ideal} never does. ASR of \texttt{gullible} under a defense is an upper bound on what the
+defense lets through; BU of \texttt{ideal} is the utility the defense permits.
+
+% =====================================================================================
+\section{Experimental Setup}
+\label{sec:setup}
+% =====================================================================================
+
+\textbf{Splits.} A fixed task-level split puts every scenario of a task on one side.
+Dev (tasks T03, T04, T07, T15, T16; 43 scenarios covering all classes) was used only for design
+decisions: detector rules, risk thresholds, approver lapse rate and loop limits. All reported
+numbers are on test (11 tasks; 102 attacked and 11 benign scenarios).
+
+\textbf{Models and decoding.} Primary local model: Qwen2.5-3B-Instruct~\cite{qwen2025qwen25} via
+Ollama (4-bit, Quadro M2200 4\,GB). Secondary: Llama-3.2-3B~\cite{grattafiori2024llama3} and
+Qwen2.5-1.5B (one seed). API models: gpt-oss-20B/120B~\cite{openai2025gptoss} and Qwen3.8-27B via
+Groq, and Llama-3.1-8B and Llama-3.3-70B via OpenRouter, which overlap with MSB. The agent decodes at
+temperature 0.7 with seeds 0, 1 and 2; we report mean $\pm$ standard deviation across seeds. The guard
+decodes greedily. Maximum 8 steps per episode.
+
+\textbf{Experiments.} E1: baselines B0 and B1. E2: the base paper's defense (B2) on our data; MSB's
+own numbers are \emph{taken from the paper}, ours are reproduced. E3: the proposed system
+(allowlist + scoped credentials + risk-tiered approval + audit detector). E4: one experiment per gap.
+E5: ablation removing one component from the full system at a time. E6: tokens (agent and guard),
+latency, tool calls, recovered calls, loop/timeout and infrastructure-error rates. E0 runs the
+reference agents under every defense on both splits.
+
+\textbf{Statistics.} We use 95\% bootstrap confidence intervals~\cite{efron1979bootstrap} over
+episodes and the exact McNemar test~\cite{mcnemar1947} for two defenses on the same paired
+(scenario, seed) episodes.
+
+\textbf{Success criteria (from Phase~1).} Gap~1 is addressed if allowlist + scoped credentials has
+higher NRP than the MCIP-style guard on at least three of four models and lowers ASR by at least
+50\% versus no defense. Gap~2: scoped credentials bring PVR to $\le$5\% and reduce CD success by
+$\ge$80\% while BU drops by $\le$5 points. Gap~3: risk-based approval stops $\ge$90\% of attacks that
+reach a sensitive action with $\le$1.5 approvals per benign task, and the detector reaches $\ge$80\%
+recall at $\ge$80\% precision. Following our Phase~1 risk plan, verdicts use only models with
+$\text{BU}\ge 50\%$.
+
+% =====================================================================================
+\section{Results}
+\label{sec:results}
+% =====================================================================================
+
+\subsection{E1--E3: baselines, base-paper defense and proposed system}
+
+\begin{table*}[t]
+\centering
+\caption{E1/E2/E3 on the test split (\%, mean $\pm$ std over seeds; reference agents are deterministic).}
+\label{tab:main}
+\begin{adjustbox}{max width=\textwidth}\gen{t1_main}\end{adjustbox}
+\end{table*}
+
+Table~\ref{tab:main} gives the main comparison. Undefended, the gullible reference agent is
+hijacked in every attacked scenario (ASR 100\%), which confirms that each of the 14 variants is
+realisable in our sandbox; it violates the user's authority in 72.5\% of attacked episodes.
+\pending{Describe B0 for qwen2.5-3B (ASR, BU) and relate to MSB's 40.35\% average; secondary models.}
+\pending{B1: does the safety prompt change ASR? Phase 1 found no change on qwen2.5-1.5B.}
+\pending{B2: MCIP-style guard ASR and PUA; compare the drop in PUA with MSB's 56.5$\rightarrow$48.9.}
+\pending{Full system: ASR, PUA, NRP vs B0 and B2, with the McNemar p-value from Table~\ref{tab:gap1}.}
+
+\begin{table}[t]
+\centering
+\caption{E2: our reproduction of the MSB setting next to MSB's reported averages.}
+\label{tab:msb}
+\begin{adjustbox}{max width=\columnwidth}\gen{t8_msb}\end{adjustbox}
+\end{table}
+
+\textbf{Comparison with the base paper.} Table~\ref{tab:msb} places MSB's reported averages (ten
+models, MCIP guardian) next to our reproduction. The comparison is indicative rather than exact: our
+scenarios, servers and models differ, and our guard is a prompted substitute. The qualitative
+pattern to check is MSB's: a detector lowers ASR but also lowers task completion under attack, so NRP
+barely moves. \pending{State whether our numbers show the same pattern.}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{generated/fig_asr_by_class.png}
+\caption{ASR by attack class: undefended, MCIP-style guard and full system.}
+\label{fig:class}
+\end{figure}
+
+\subsection{E4, Gap 1: system-level mitigations versus the MCIP-style guard}
+
+\begin{table*}[t]
+\centering
+\caption{Gap 1: allowlist and scoped credentials versus the MCIP-style guard (test split, \%, seeds pooled).}
+\label{tab:gap1}
+\begin{adjustbox}{max width=\textwidth}\gen{t3_gap1}\end{adjustbox}\\[4pt]
+\begin{adjustbox}{max width=\textwidth}\gen{t3_gap1_mcnemar}\end{adjustbox}
+\end{table*}
+
+With the gullible agent, the allowlist alone reduces ASR from 100\% to 24.5\%. Every remaining
+success comes from the two response-stage classes whose payload arrives in data returned by a
+trusted, allowlisted tool (RI and CD); all planning-stage and tool-borne attacks (PI, NC, PM, OP, UI,
+FE, TT, PE) are removed because the agent never sees or reaches the attacker's tools. This is exactly
+the residual predicted by hypothesis H1. The allowlist has a utility cost in the variants where the
+attacker's server is the \emph{only} provider of the task's tool (OP, UI, FE, TT): the call fails
+safe, so PUA drops from 92.2\% to 58.8\% even though no attack succeeds. Scoped credentials alone
+leave 27.5\% ASR: exactly the four classes whose goal stays inside the user's authority (capturing a
+call with NC, PM or TT, and handing the PIN to a tool with OP). Together, allowlist and scoped
+credentials bring the gullible agent to 0\% ASR (NRP 58.8\% versus 0\% undefended): the two controls
+cover disjoint attack surfaces. \pending{qwen2.5-3B: ASR and NRP of
+allowlist, scoped, allowlist+scoped and llm\_guard; McNemar p; verdict against the 3-of-4-models
+criterion (state how many eligible models were run).}
+
+\subsection{E4, Gap 2: authority misuse}
+
+\begin{table}[t]
+\centering
+\caption{Gap 2: privilege violations and authority-based attacks (test split, \%).}
+\label{tab:gap2}
+\begin{adjustbox}{max width=\columnwidth}\gen{t4_gap2}\end{adjustbox}
+\end{table}
+
+Table~\ref{tab:gap2} contrasts the service token with the user's scoped token. For the gullible
+agent, PVR falls from 72.5\% to 0\% and all three CD variants and PE fail, because the
+servers refuse to read \texttt{/hr} or \texttt{/secrets} or to change ACLs for the user's token, while
+BU is unchanged: the user's scopes cover every benign task. The allowlist on its own does not reduce
+CD at all (100\%), confirming H2's prediction that CD uses only legitimate tools. No benign episode
+produces a violation, so PVR reacts only to attacks. \pending{LLM results: CD and PE success under
+the service token (H2 expects $\ge$30\% CD on larger models), PVR under scoped, BU change.}
+
+\subsection{E4, Gap 3: the benefit and cost of oversight}
+
+\begin{table*}[t]
+\centering
+\caption{Gap 3: approval policy and approver behaviour (top) and the post-hoc audit-log detector (bottom), test split.}
+\label{tab:gap3}
+\begin{adjustbox}{max width=\textwidth}\gen{t5_gap3}\end{adjustbox}\\[4pt]
+\begin{adjustbox}{max width=\textwidth}\gen{t5_gap3_detector}\end{adjustbox}
+\end{table*}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{generated/fig_oversight.png}
+\caption{Oversight cost versus benefit. Dashed lines: the Phase~1 targets (90\% stopped, 1.5 approvals per benign task).}
+\label{fig:oversight}
+\end{figure}
+
+Table~\ref{tab:gap3} and Fig.~\ref{fig:oversight} quantify oversight. Risk tiers make approval
+cheap: none of our benign tasks contains a high-risk action, so approvals per benign task fall from
+0.64 (\texttt{hitl-all}) to 0 (\texttt{hitl}). The price is a blind spot. With the gullible agent the
+attentive oracle behind risk tiers stops 87.7\% of attacks that reach a sensitive action, below the
+90\% target, because the internal-recipient confused deputy looks low risk and is waved through by
+policy before any human sees it (CD ASR 66.7\% under \texttt{hitl}); approving everything sensitive
+stops 100\% of them. Even then one CD episode succeeds without any unrequested action: in T05 the user
+asks for an e-mail to Bob and the injection asks to send Bob the deployment keys, so an approver who
+checks \emph{whom} the agent writes to, but not \emph{what}, approves it. Only scoped credentials stop
+both cases (Table~\ref{tab:gap2}). Approver quality dominates: a reviewer who lapses on 30\% of
+unrequested actions raises ASR from 37.3\% to 54.5\%. \pending{LLM: stop rate oracle vs fatigue vs approve-all}. The audit-log detector, run on
+undefended episodes, \pending{recall / precision / FPR}; because its rules depend only on organisation
+policy, it also flags the internal confused deputy's out-of-home read, which is why detection
+complements prevention (H3).
+
+\subsection{E5: ablation}
+
+\begin{table}[t]
+\centering
+\caption{E5 ablation: one component of the full system removed at a time (test split, \%).}
+\label{tab:ablation}
+\begin{adjustbox}{max width=\columnwidth}\gen{t6_ablation}\end{adjustbox}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{generated/fig_ablation.png}
+\caption{Ablation: ASR and NRP when one component is removed from the full system.}
+\label{fig:ablation}
+\end{figure}
+
+Table~\ref{tab:ablation} and Fig.~\ref{fig:ablation} remove one component at a time. For the
+gullible agent, removing the allowlist raises ASR from 0\% to 27.5\% (NC, PM, OP and TT return: their
+goals are within the user's authority and do not touch a high-risk action), removing scoped
+credentials raises it to 9.8\% (the internal CD variants return, PVR 14.7\%), and removing human
+approval leaves it at 0\%: for this agent HITL is pure defense in depth, its contribution shows only
+when one of the other layers is missing. \pending{LLM: for each removal, state the ASR increase and which classes reappear: without the allowlist,
+planning-stage attacks return unless HITL or scopes catch their goal; without scoped credentials,
+the internal CD variants return; without HITL, transfers to unknown accounts that the user's token
+is not scoped for are still refused, so HITL mainly adds defense in depth.}
+
+\subsection{E6: efficiency and reliability}
+
+\begin{table*}[t]
+\centering
+\caption{E6: cost and reliability per episode (LLM runs, test split).}
+\label{tab:eff}
+\begin{adjustbox}{max width=\textwidth}\gen{t7_efficiency}\end{adjustbox}
+\end{table*}
+
+The deterministic layers add no model calls: allowlist and scope checks are dictionary and string
+operations, and approval only adds latency when a human is asked. The MCIP-style guard adds one
+LLM call per tool call. \pending{Tokens per episode and seconds per episode for none, llm\_guard and
+full; text-recovered calls; loop/timeout rate; infrastructure errors and retries.}
+
+% =====================================================================================
+\section{Failure Analysis}
+\label{sec:failures}
+% =====================================================================================
+
+We grouped every failure of the full system on the test split into categories with a deterministic
+rule per category (\texttt{mcpguard/eval/failures.py}): security failures (attack succeeded) into
+low-risk-channel bypass, approver lapse, injection through allowed data, untrusted tool reached, and
+other; utility failures into running out of steps/loop/timeout, no tool use, hijacked by the attack,
+over-blocking by the gateway, credential scope, tool error and wrong answer.
+\pending{Insert the frequency table from results/paper/failures\_qwen2.5-3b\_full.md and two success
+and two failure trajectories (abbreviated).}
+
+\textbf{Development iterations.} Table~\ref{tab:devlog} summarises the failures observed during
+development and their measured effect; full entries are in \texttt{docs/devlog.md}.
+
+\begin{table}[t]
+\centering
+\caption{Selected development iterations (observed failure $\rightarrow$ change $\rightarrow$ effect).}
+\label{tab:devlog}
+\footnotesize
+\begin{tabular}{p{0.29\columnwidth}p{0.29\columnwidth}p{0.30\columnwidth}}
+\toprule
+Observed & Change & Effect \\
+\midrule
+FE attacker replaced every response, hiding its own exfiltrated data & inject on first call only & 2/14 FE test scenarios become reachable \\
+CD 0\% on all Phase~1 models (external recipient refused) & internal-recipient CD variants & CD tests authority, not refusal \\
+Approval asked for every sensitive call & risk tiers from policy & fewer approvals per benign task (Tab.~\ref{tab:gap3}) \\
+7.6\% of gpt-oss-120B episodes hit max steps & loop guard, timeouts & \pending{Tab.~\ref{tab:eff}} \\
+5 HTTP-429 losses (Qwen3.8-27B) & retries, resume re-runs errors & errors reported in Tab.~\ref{tab:eff} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================================================
+\section{Discussion, Limitations and Threats to Validity}
+\label{sec:limits}
+% =====================================================================================
+
+\textbf{What the results mean for deployers.} Deterministic controls cover different attack
+surfaces. The allowlist removes the MCP supply chain; scoped credentials remove authority misuse
+regardless of how the instruction arrived; human approval is cheap only when tiered, and tiering
+moves trust from the human to the policy. No single layer suffices; in our results the combination
+of allowlist and scoped credentials \pending{does / does not} dominate the model-level guard.
+
+\textbf{Internal validity.} The MCIP guardian is replaced by a prompted guard using the agent's own
+small model, which may underestimate MCIP. Simulated approvers are idealised: the oracle never errs,
+and the fatigue model uses a fixed lapse rate rather than a learned human model. The DLP rule
+matches the user's PIN format, which an organisation would know but which favours the detector. The
+hash chain detects edits and reordering but not truncation of the tail of the log without an external
+anchor.
+
+\textbf{External validity.} Our sandbox has four servers, 16 tasks and 140 attack scenarios, far
+fewer than MSB's 2{,}000 instances, and attacks are templated rather than optimised as in
+ToolHijacker~\cite{shi2026toolhijacker}; adaptive attackers who know the policy could craft
+low-risk-looking actions. Local models are 1.5--3B parameters because the laptop has a 4\,GB GPU;
+larger models depend on free-tier API quotas, so their coverage is \pending{state coverage}.
+FE results are not comparable with Phase~1 because we fixed the FE server.
+
+\textbf{Construct validity.} ASR counts a goal only when it completes; privilege violations that do
+not complete a goal (e.g.\ reading HR data and then refusing to send it) are captured by PVR instead.
+Verdicts use only models with BU $\ge$ 50\%.
+
+% =====================================================================================
+\section{Conclusion}
+% =====================================================================================
+
+\sys{} shows that the defenses security teams can actually deploy, an allowlist pinned by
+description hash, least-privilege credentials, tiered human approval and tamper-evident audit logs,
+can be measured on the same attacks and metrics as MCP security benchmarks. Reference agents show
+that the allowlist removes every tool-borne attack and scoped credentials remove authority misuse,
+leaving attacks carried by trusted data within the user's own authority as the hard residual.
+\pending{One-sentence summary of the LLM results and gap verdicts.} Future work: an optimised,
+policy-aware attacker, learned approver models from user studies, and anchoring the audit chain.
+
+\section*{Reproducibility}
+Code, data, configurations, results and sample trajectories:
+\url{https://github.com/Zaid2004fast/MCP-GuardBench} (release \texttt{phase2-final}). Every table and
+figure is regenerated by \texttt{python experiments/reproduce.py report}.
+
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}
