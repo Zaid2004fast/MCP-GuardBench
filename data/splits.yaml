@@ -1,0 +1,11 @@
+# Fixed task-level split (Phase 2). Splitting by *task* keeps every scenario of a task on
+# the same side, so nothing about a test task leaks into design decisions.
+#
+#   dev  - used ONLY for design decisions: guard prompt wording, detector rules, risk-tier
+#          thresholds, approver lapse rate, loop-guard limits.
+#   test - used ONLY for the numbers reported in the paper (E1-E6).
+#
+# dev has one task per domain (files, mail, bank) + two benign-only probes; it still
+# covers all 10 attack classes (T04 has an injectable e-mail, so RI and CD appear).
+dev:  [T03, T04, T07, T15, T16]
+test: [T01, T02, T05, T06, T08, T09, T10, T11, T12, T13, T14]

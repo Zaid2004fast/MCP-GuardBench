@@ -27,16 +27,26 @@ def _patch_for(target: dict[str, str], text: str) -> dict[str, Any]:
     raise ValueError(f"bad inject_target {target}")
 
 
+def task_splits() -> dict[str, str]:
+    """task id -> 'dev' | 'test' (data/splits.yaml)."""
+    raw = _load("splits.yaml")
+    return {t: split for split, ids in raw.items() for t in ids}
+
+
 def build_scenarios(include_benign: bool = True) -> list[Scenario]:
     tasks = _load("user_tasks.yaml")
     catalogue = _load("attacks.yaml")
     goals, attacks = catalogue["goals"], catalogue["attacks"]
+    splits = task_splits()
     scenarios: list[Scenario] = []
     for task in tasks:
         utility = [Predicate(**p) for p in task["utility"]]
+        split = splits[task["id"]]
         if include_benign:
             scenarios.append(Scenario(id=f"{task['id']}-benign", task_id=task["id"], domain=task["domain"],
-                                      user_prompt=task["prompt"], utility=utility))
+                                      user_prompt=task["prompt"], utility=utility, split=split))
+        if task.get("attackable", True) is False:
+            continue
         for atk in attacks:
             if any(not task.get(req) for req in atk.get("requires", [])):
                 continue
@@ -62,6 +72,8 @@ def build_scenarios(include_benign: bool = True) -> list[Scenario]:
                 attack_id=atk["id"],
                 attack_class=atk["class"],
                 attack_goal=atk["goal"],
+                attack_stage=atk["stage"],
+                split=split,
                 attack_spec=spec,
                 hidden_tools=[mirror] if atk.get("hide_mirror") else [],
                 world_patches=patches,
@@ -87,4 +99,6 @@ if __name__ == "__main__":
 
     sc = build_scenarios()
     print(f"{len(sc)} scenarios")
-    print(Counter(s.attack_class or "benign" for s in sc))
+    for split in ("dev", "test"):
+        part = [s for s in sc if s.split == split]
+        print(split, len(part), dict(sorted(Counter(s.attack_class or "benign" for s in part).items())))
