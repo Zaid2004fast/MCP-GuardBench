@@ -48,14 +48,25 @@ def report() -> None:
     runs = [str(RESULTS / r) for r in ("phase2-reference", "phase2-local", "phase2-api")
             if (RESULTS / r / "episodes.jsonl").exists()]
     sh("-m", "mcpguard.eval.report", "--runs", *runs, "--out", str(RESULTS / "paper"))
+    for run in runs:
+        sh("-m", "mcpguard.eval.plots", run)
+    # The failure analysis and sample logs read per-episode traces, which are git-ignored
+    # (too large). In a fresh clone, keep the committed failures_*.md and logs/ instead.
+    if not any((RESULTS / "phase2-local").glob("*/*/*/episodes/*/trace.json")):
+        print("per-episode traces not present (fresh clone): keeping the committed "
+              "results/paper/failures_*.md and logs/")
+        _copy_generated()
+        return
     for run, model, defense in FAILURE_TARGETS:
         if (RESULTS / run / "episodes.jsonl").exists():
             slug = model.split(":", 1)[-1].replace("/", "-").replace(":", "-")
             sh("-m", "mcpguard.eval.failures", str(RESULTS / run), "--model", model, "--defense", defense,
                "--out", str(RESULTS / "paper" / f"failures_{slug}_{defense}.md"))
-    for run in runs:
-        sh("-m", "mcpguard.eval.plots", run)
     sh(str(ROOT / "experiments" / "sample_logs.py"))
+    _copy_generated()
+
+
+def _copy_generated() -> None:
     # the paper \input's tables and figures from paper/generated/
     import shutil
     gen = ROOT / "paper" / "generated"
