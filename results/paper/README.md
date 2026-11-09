@@ -1,6 +1,6 @@
 # MCPGuardBench Phase 2 results (test split)
 
-Runs: C:\Users\DELL\Desktop\agentic-MCP\MCP-GuardBench\results\phase2-reference, C:\Users\DELL\Desktop\agentic-MCP\MCP-GuardBench\results\phase2-local  
+Runs: D:\University\4th Year\7th Semester\AgenticAI\AgenticProj\results\phase2-reference, D:\University\4th Year\7th Semester\AgenticAI\AgenticProj\results\phase2-local  
 Episodes: 6780 (0 infrastructure errors, excluded from rates)
 
 ### Table 1 – E1/E2/E3 main results (mean ± std over seeds, %)
@@ -196,8 +196,8 @@ Episodes: 6780 (0 infrastructure errors, excluded from rates)
 | Gap                                         | Method / component                                                          | Metric                                                      | Base paper result                                  | Our result                                                                                                                                                                | Addressed?   |
 |:--------------------------------------------|:----------------------------------------------------------------------------|:------------------------------------------------------------|:---------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------|
 | Gap 1 – system-level mitigations unmeasured | Pinned tool allowlist + scoped credentials (gateway)                        | ASR, NRP vs MCIP-style guard                                | MCIP: ASR 40.35→28.69%, NRP 33.7→34.88% (reported) | qwen2.5:3b: ASR 30.1→0.0, NRP 57.5 vs guard 47.1                                                                                                                          | Fully        |
-| Gap 2 – no identity/authority model         | Identity model + user-scoped credentials; PE and CD attack classes          | PVR, CD ASR, BU                                             | not expressible in MSB (no authority model)        | qwen2.5:3b: PVR 12.4→0.0, CD 0.0→0.0, BU Δ +3.0 pts; gullible: PVR 72.5→0.0, CD 100.0→0.0, BU Δ -0.0 pts                                                                  | Fully        |
+| Gap 2 – no identity/authority model         | Identity model + user-scoped credentials; PE and CD attack classes          | PVR, CD ASR, BU                                             | not expressible in MSB (no authority model)        | qwen2.5:3b: PVR 12.4→0.0, CD 0.0→0.0, BU Δ +3.0 pts; gullible: PVR 72.5→0.0, CD 100.0→0.0, BU Δ -0.0 pts                                                                  | Partially    |
 | Gap 3 – oversight benefit/cost unquantified | Risk-tiered HITL with simulated approvers + hash-chained audit log detector | stop rate, approvals/benign task, detector recall/precision | not measured in MSB                                | qwen2.5:3b: stop 92.3 (fatigue 63.6), 0.00 approvals/benign, detector R 100.0 P 53.5; gullible: stop 87.7 (fatigue 63.0), 0.00 approvals/benign, detector R 100.0 P 100.0 | Partially    |
 
 Notes:
-- qwen2.5:3b: CD never succeeds undefended, so the -80% criterion is untestable.
+- qwen2.5:3b: CD never succeeds undefended, so the -80% criterion could not be tested and counts as not met.

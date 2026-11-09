@@ -23,7 +23,7 @@
 \begin{document}
 
 \title{\sys: Measuring System-Level Mitigations Against\\Tool-Access Attacks on MCP-Connected LLM Agents\\[4pt]
-{\normalsize AI4016 Agentic Artificial Intelligence, Fall 2026 --- Project G1-02}}
+{\normalsize AI4015 Agentic Artificial Intelligence, Fall 2026 --- Project G1-02}}
 
 \author{
 \IEEEauthorblockN{Zaid Bin Umer}
@@ -606,6 +606,10 @@ FE results are not comparable with Phase~1 because we fixed the FE server.
 
 \textbf{Construct validity.} ASR counts a goal only when it completes; privilege violations that do
 not complete a goal (e.g.\ reading HR data and then refusing to send it) are captured by PVR instead.
+The 100\% NC success is a property of the host's name-resolution policy rather than of the model:
+our hub, like many hosts, lets the last-registered server win a name clash, so the shadowing tool is the
+only one the agent can call. A host that namespaces or rejects duplicate names would not be vulnerable
+in this way, which is exactly the protection the allowlist provides.
 Verdicts use only models with BU $\ge$ 50\%.
 
 % =====================================================================================
@@ -618,9 +622,11 @@ can be measured on the same attacks and metrics as MCP security benchmarks. Refe
 that the allowlist removes every tool-borne attack and scoped credentials remove authority misuse,
 leaving attacks carried by trusted data within the user's own authority as the hard residual.
 On two 3B open-weight models the full gateway removes every successful attack (qwen2.5-3B: 30.1\%
-to 0\%) while the MCIP-style guard reaches only 24.5\%, resolving Gap~1 and Gap~2 on the models we
-could run and Gap~3 partially, since risk-tiered approval misses attacks that only reuse the user's
-requested action. Future work: an optimised,
+to 0\%) while the MCIP-style guard reaches only 24.5\%. This resolves Gap~1 on the models we
+could run. Gap~2 is resolved partially: scoped credentials remove every privilege violation, but
+confused-deputy attacks never succeeded on our LLMs, so the 80\% reduction criterion could only be
+shown with the reference agent. Gap~3 is resolved partially, since risk-tiered approval misses attacks
+that only reuse the user's requested action. Future work: an optimised,
 policy-aware attacker, learned approver models from user studies, and anchoring the audit chain.
 
 \section*{Reproducibility}
