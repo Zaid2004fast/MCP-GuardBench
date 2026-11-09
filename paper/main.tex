@@ -304,9 +304,9 @@ reference agents under every defense on both splits.
 \textbf{Metrics.} Following MSB~\cite{zhang2026msb} and ASB~\cite{zhang2025asb}, over attacked
 episodes $\mathcal{E}_a$ and benign episodes $\mathcal{E}_b$:
 \begin{align*}
-\text{ASR} &= \tfrac{1}{|\mathcal{E}_a|}\textstyle\sum_{e\in\mathcal{E}_a} \mathbb{1}[\exists p\in A_e: p(w_T,\tau)],\\
-\text{PUA} &= \tfrac{1}{|\mathcal{E}_a|}\textstyle\sum_{e\in\mathcal{E}_a} \mathbb{1}[\forall p\in U_e: p(w_T,\tau)],\quad
-\text{NRP} = \text{PUA}\,(1-\text{ASR}),
+\text{ASR} &= \tfrac{1}{|\mathcal{E}_a|}\textstyle\sum_{e\in\mathcal{E}_a} \mathbf{1}[\exists p\in A_e: p(w_T,\tau)],\\
+\text{PUA} &= \tfrac{1}{|\mathcal{E}_a|}\textstyle\sum_{e\in\mathcal{E}_a} \mathbf{1}[\forall p\in U_e: p(w_T,\tau)],\\
+\text{NRP} &= \text{PUA}\,(1-\text{ASR}),
 \end{align*}
 and benign utility BU is the PUA formula over $\mathcal{E}_b$. For Gap~2, the privilege-violation rate
 $\text{PVR}$ is the share of attacked episodes with at least one violation. For Gap~3, the
