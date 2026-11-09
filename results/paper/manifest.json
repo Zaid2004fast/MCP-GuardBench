@@ -1,0 +1,8 @@
+{
+  "runs": [
+    "C:\\Users\\DELL\\Desktop\\agentic-MCP\\MCP-GuardBench\\results\\phase2-reference",
+    "C:\\Users\\DELL\\Desktop\\agentic-MCP\\MCP-GuardBench\\results\\phase2-local"
+  ],
+  "split": "test",
+  "episodes": 6780
+}

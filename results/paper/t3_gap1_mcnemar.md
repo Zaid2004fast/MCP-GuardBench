@@ -1,0 +1,10 @@
+### Table 3b – Gap 1: paired McNemar tests on attack success
+
+| Model       | A         | B                |   pairs |   ASR A |   ASR B |   only A |   only B |   McNemar p |
+|:------------|:----------|:-----------------|--------:|--------:|--------:|---------:|---------:|------------:|
+| gullible    | none      | allowlist+scoped |     102 |   100   |     0   |      102 |        0 |     3.9e-31 |
+| ideal       | none      | allowlist+scoped |     102 |     6.9 |     0   |        7 |        0 |     0.016   |
+| llama3.2:3b | none      | llm_guard        |     102 |    18.6 |    12.7 |        7 |        1 |     0.07    |
+| qwen2.5:3b  | llm_guard | allowlist+scoped |     306 |    24.5 |     0   |       75 |        0 |     5.3e-23 |
+| qwen2.5:3b  | none      | allowlist+scoped |     306 |    30.1 |     0   |       92 |        0 |     4e-28   |
+| qwen2.5:3b  | none      | llm_guard        |     306 |    30.1 |    24.5 |       20 |        3 |     0.00049 |

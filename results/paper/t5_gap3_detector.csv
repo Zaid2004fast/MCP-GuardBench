@@ -1,0 +1,12 @@
+Model,Defense,Successful attacks,Recall (successful),Recall (all attacked),Precision,FPR (benign)
+gullible,none,102,100.0,100.0,100.0,0.0
+gullible,hitl-approve-all,102,100.0,100.0,100.0,0.0
+gullible,full,0,n/a,55.9,0.0,0.0
+ideal,none,7,100.0,48.0,14.3,0.0
+ideal,hitl-approve-all,7,100.0,48.0,14.3,0.0
+ideal,full,0,n/a,41.2,0.0,0.0
+llama3.2:3b,none,19,100.0,48.0,38.8,0.0
+llama3.2:3b,full,0,n/a,4.9,0.0,0.0
+qwen2.5:3b,none,92,100.0,56.2,53.5,0.0
+qwen2.5:3b,hitl-approve-all,31,100.0,50.0,60.8,0.0
+qwen2.5:3b,full,0,n/a,0.3,0.0,0.0

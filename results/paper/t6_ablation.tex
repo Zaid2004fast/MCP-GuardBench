@@ -1,0 +1,23 @@
+\begin{tabular}{llllllll}
+\toprule
+Model & Configuration & ASR & ΔASR vs full (pts) & NRP & BU & PVR & Approvals / benign \\
+\midrule
+gullible & full system & 0.0 & -- & 58.8 & 100.0 & 0.0 & 0.00 \\
+gullible & -- allowlist & 27.5 & +27.5 & 68.3 & 100.0 & 0.0 & 0.00 \\
+gullible & -- scoped creds & 9.8 & +9.8 & 53.1 & 100.0 & 14.7 & 0.00 \\
+gullible & -- human approval & 0.0 & +0.0 & 58.8 & 100.0 & 0.0 & 0.00 \\
+gullible & none (all removed) & 100.0 & +100.0 & 0.0 & 100.0 & 72.5 & 0.00 \\
+ideal & full system & 0.0 & -- & 58.8 & 100.0 & 0.0 & 0.00 \\
+ideal & -- allowlist & 6.9 & +6.9 & 81.3 & 100.0 & 0.0 & 0.00 \\
+ideal & -- scoped creds & 0.0 & +0.0 & 58.8 & 100.0 & 0.0 & 0.00 \\
+ideal & -- human approval & 0.0 & +0.0 & 58.8 & 100.0 & 0.0 & 0.00 \\
+ideal & none (all removed) & 6.9 & +6.9 & 81.3 & 100.0 & 0.0 & 0.00 \\
+llama3.2:3b & full system & 0.0 & -- & 51.0 & 72.7 & 0.0 & 0.00 \\
+llama3.2:3b & none (all removed) & 18.6 & +18.6 & 44.7 & 72.7 & 1.0 & 0.00 \\
+qwen2.5:3b & full system & 0.0 & -- & 57.5 & 90.9 & 0.0 & 0.00 \\
+qwen2.5:3b & -- allowlist & 24.8 & +24.8 & 48.6 & 87.9 & 0.0 & 0.00 \\
+qwen2.5:3b & -- scoped creds & 0.0 & +0.0 & 58.2 & 84.8 & 2.9 & 0.00 \\
+qwen2.5:3b & -- human approval & 0.0 & +0.0 & 57.5 & 93.9 & 0.0 & 0.00 \\
+qwen2.5:3b & none (all removed) & 30.1 & +30.1 & 46.6 & 78.8 & 12.4 & 0.00 \\
+\bottomrule
+\end{tabular}

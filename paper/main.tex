@@ -53,8 +53,9 @@ tool-borne attack but leaves the 24.5\% carried by trusted data, scoped credenti
 authority violation, and the full gateway lowers ASR from 100\% to 0\% without a single approval
 on benign tasks, at the price of failing safe when the attacker's server is the only provider of
 a tool (PUA 58.8\%). On
-\pending{qwen2.5-3B}, the full system lowers ASR from \pending{A} to \pending{B} and raises NRP from
-\pending{C} to \pending{D}, compared with \pending{E} for the MCIP-style guard. Code, data, traces
+qwen2.5-3B (three seeds), the full system lowers ASR from 30.1\% to 0\% and raises NRP from
+46.6\% to 57.5\%, compared with 24.5\% ASR and 47.1\% NRP for the MCIP-style guard; llama3.2-3B
+shows the same ordering (18.6\%$\rightarrow$0\% versus 12.7\% for the guard). Code, data, traces
 and every table are reproducible from our repository.
 \end{abstract}
 
@@ -279,9 +280,11 @@ decisions: detector rules, risk thresholds, approver lapse rate and loop limits.
 numbers are on test (11 tasks; 102 attacked and 11 benign scenarios).
 
 \textbf{Models and decoding.} Primary local model: Qwen2.5-3B-Instruct~\cite{qwen2025qwen25} via
-Ollama (4-bit, Quadro M2200 4\,GB). Secondary: Llama-3.2-3B~\cite{grattafiori2024llama3} and
-Qwen2.5-1.5B (one seed). API models: gpt-oss-20B/120B~\cite{openai2025gptoss} and Qwen3.8-27B via
-Groq, and Llama-3.1-8B and Llama-3.3-70B via OpenRouter, which overlap with MSB. The agent decodes at
+Ollama (4-bit, Quadro M2200 4\,GB). Secondary: Llama-3.2-3B~\cite{grattafiori2024llama3}
+(one seed; B0, B1, B2 and the full system). Configurations for API models, gpt-oss-20B/120B~\cite{openai2025gptoss}
+and Qwen3.8-27B via Groq and Llama-3.1-8B and Llama-3.3-70B via OpenRouter (which overlap with MSB),
+are in the repository (\texttt{experiments/configs/api\_*.yaml}) but were not run for this paper
+because of free-tier quotas. The agent decodes at
 temperature 0.7 with seeds 0, 1 and 2; we report mean $\pm$ standard deviation across seeds. The guard
 decodes greedily. Maximum 8 steps per episode.
 
@@ -343,10 +346,17 @@ $\text{BU}\ge 50\%$.
 Table~\ref{tab:main} gives the main comparison. Undefended, the gullible reference agent is
 hijacked in every attacked scenario (ASR 100\%), which confirms that each of the 14 variants is
 realisable in our sandbox; it violates the user's authority in 72.5\% of attacked episodes.
-\pending{Describe B0 for qwen2.5-3B (ASR, BU) and relate to MSB's 40.35\% average; secondary models.}
-\pending{B1: does the safety prompt change ASR? Phase 1 found no change on qwen2.5-1.5B.}
-\pending{B2: MCIP-style guard ASR and PUA; compare the drop in PUA with MSB's 56.5$\rightarrow$48.9.}
-\pending{Full system: ASR, PUA, NRP vs B0 and B2, with the McNemar p-value from Table~\ref{tab:gap1}.}
+Undefended (B0), qwen2.5-3B is hijacked in 30.1$\pm$1.5\% of attacked episodes with 78.8\% benign
+utility, below MSB's ten-model average of 40.35\%; llama3.2-3B is hijacked in 18.6\% (BU 72.7\%).
+Almost all successes come from the tool-borne classes NC, PM, OP and TT (Fig.~\ref{fig:class}); the
+small models rarely follow injected text (PI, RI, PE and CD stay at 0\%). The safety prompt (B1)
+does not help: 29.7\% on qwen2.5-3B and 21.6\% on llama3.2-3B, matching Phase~1. The MCIP-style
+guard (B2) lowers ASR to 24.5\% on qwen2.5-3B (McNemar $p=4.9\times10^{-4}$ against B0) and to 12.7\%
+on llama3.2-3B ($p=0.07$), but also lowers PUA (66.7$\rightarrow$62.4\% and 54.9$\rightarrow$38.2\%),
+the same trade-off MSB reports (56.5$\rightarrow$48.9\%). The full system removes every successful
+attack on both models (ASR 0\% in all 3$\times$102 qwen2.5-3B episodes; McNemar $p=5.3\times10^{-23}$
+against the guard), with NRP 57.5\% (qwen2.5-3B) and 51.0\% (llama3.2-3B) and no loss of benign
+utility (BU 90.9\% versus 78.8\% undefended).
 
 \begin{table}[t]
 \centering
@@ -359,7 +369,10 @@ realisable in our sandbox; it violates the user's authority in 72.5\% of attacke
 models, MCIP guardian) next to our reproduction. The comparison is indicative rather than exact: our
 scenarios, servers and models differ, and our guard is a prompted substitute. The qualitative
 pattern to check is MSB's: a detector lowers ASR but also lowers task completion under attack, so NRP
-barely moves. \pending{State whether our numbers show the same pattern.}
+barely moves. Our numbers show the same pattern: the guard lowers ASR by 5.6 points on
+qwen2.5-3B with NRP flat (46.6$\rightarrow$47.1\%), and by 5.9 points on llama3.2-3B with NRP falling
+(44.7$\rightarrow$33.4\%), because the guard also blocks calls the task needs. OP stays high under
+the guard on qwen2.5-3B (95.2\%).
 
 \begin{figure}[t]
 \centering
@@ -388,9 +401,13 @@ safe, so PUA drops from 92.2\% to 58.8\% even though no attack succeeds. Scoped 
 leave 27.5\% ASR: exactly the four classes whose goal stays inside the user's authority (capturing a
 call with NC, PM or TT, and handing the PIN to a tool with OP). Together, allowlist and scoped
 credentials bring the gullible agent to 0\% ASR (NRP 58.8\% versus 0\% undefended): the two controls
-cover disjoint attack surfaces. \pending{qwen2.5-3B: ASR and NRP of
-allowlist, scoped, allowlist+scoped and llm\_guard; McNemar p; verdict against the 3-of-4-models
-criterion (state how many eligible models were run).}
+cover disjoint attack surfaces. On qwen2.5-3B the pattern repeats: the allowlist alone gives
+0\% ASR (NRP 53.9\%), scoped credentials alone 25.2\% (the model's successes are the in-authority
+classes), and allowlist plus scoped credentials 0\% with NRP 57.5\% and BU 93.9\%, against 24.5\% ASR
+and 47.1\% NRP for the guard ($p=5.3\times10^{-23}$). Llama3.2-3B was run with the full system rather
+than the allowlist+scoped configuration and also reaches 0\%. Both LLMs we ran meet the BU
+$\ge$50\% eligibility rule and both satisfy the criterion; we did not run the two API models, so the
+Phase~1 criterion of three out of four models is met on the two models available, not four.
 
 \subsection{E4, Gap 2: authority misuse}
 
@@ -406,8 +423,11 @@ agent, PVR falls from 72.5\% to 0\% and all three CD variants and PE fail, becau
 servers refuse to read \texttt{/hr} or \texttt{/secrets} or to change ACLs for the user's token, while
 BU is unchanged: the user's scopes cover every benign task. The allowlist on its own does not reduce
 CD at all (100\%), confirming H2's prediction that CD uses only legitimate tools. No benign episode
-produces a violation, so PVR reacts only to attacks. \pending{LLM results: CD and PE success under
-the service token (H2 expects $\ge$30\% CD on larger models), PVR under scoped, BU change.}
+produces a violation, so PVR reacts only to attacks. The 3B models never complete a CD or PE goal,
+even with the service token, so the H2 expectation of $\ge$30\% CD success could not be tested on
+them; it needs larger models. They do misuse authority: undefended qwen2.5-3B violates the user's
+scopes in 12.4\% of attacked episodes (llama3.2-3B 1.0\%). Scoped credentials bring PVR to 0\%
+while BU rises from 78.8\% to 81.8\%.
 
 \subsection{E4, Gap 3: the benefit and cost of oversight}
 
@@ -436,8 +456,14 @@ stops 100\% of them. Even then one CD episode succeeds without any unrequested a
 asks for an e-mail to Bob and the injection asks to send Bob the deployment keys, so an approver who
 checks \emph{whom} the agent writes to, but not \emph{what}, approves it. Only scoped credentials stop
 both cases (Table~\ref{tab:gap2}). Approver quality dominates: a reviewer who lapses on 30\% of
-unrequested actions raises ASR from 37.3\% to 54.5\%. \pending{LLM: stop rate oracle vs fatigue vs approve-all}. The audit-log detector, run on
-undefended episodes, \pending{recall / precision / FPR}; because its rules depend only on organisation
+unrequested actions raises ASR from 37.3\% to 54.9\%. On qwen2.5-3B the stop rate is 92.3\% with
+risk tiers and an attentive approver, 100\% when every sensitive call is approved (0.55 approvals
+per benign task), 63.6\% with a fatigued approver and 36.4\% when the approver approves everything.
+ASR under \texttt{hitl} stays at 24.5\%, because the model's successful attacks (NC, PM, OP, TT)
+capture the user's own requested action rather than adding an unrequested one, which no approver
+can see. The audit-log detector, run on undefended episodes, flags 100\% of successful attacks on
+both LLMs with 0\% false positives on benign episodes; precision is 53.5\% (qwen2.5-3B) and 38.8\%
+(llama3.2-3B) because it also flags attempts that did not complete; because its rules depend only on organisation
 policy, it also flags the internal confused deputy's out-of-home read, which is why detection
 complements prevention (H3).
 
@@ -479,10 +505,11 @@ gullible agent, removing the allowlist raises ASR from 0\% to 27.5\% (NC, PM, OP
 goals are within the user's authority and do not touch a high-risk action), removing scoped
 credentials raises it to 9.8\% (the internal CD variants return, PVR 14.7\%), and removing human
 approval leaves it at 0\%: for this agent HITL is pure defense in depth, its contribution shows only
-when one of the other layers is missing. \pending{LLM: for each removal, state the ASR increase and which classes reappear: without the allowlist,
-planning-stage attacks return unless HITL or scopes catch their goal; without scoped credentials,
-the internal CD variants return; without HITL, transfers to unknown accounts that the user's token
-is not scoped for are still refused, so HITL mainly adds defense in depth.}
+when one of the other layers is missing. On qwen2.5-3B, removing the allowlist raises ASR from 0\%
+to 24.8\% (NC, PM and OP return at 100\%, TT at 61.9\%); removing scoped credentials leaves ASR at
+0\% but PVR rises to 2.9\%; removing human approval leaves ASR at 0\% and raises BU to 93.9\%. For
+the model we could run, the allowlist is the component that matters; scoped credentials and HITL
+are defense in depth.
 
 \subsection{E6: efficiency and reliability}
 
@@ -495,8 +522,13 @@ is not scoped for are still refused, so HITL mainly adds defense in depth.}
 
 The deterministic layers add no model calls: allowlist and scope checks are dictionary and string
 operations, and approval only adds latency when a human is asked. The MCIP-style guard adds one
-LLM call per tool call. \pending{Tokens per episode and seconds per episode for none, llm\_guard and
-full; text-recovered calls; loop/timeout rate; infrastructure errors and retries.}
+LLM call per tool call. On qwen2.5-3B the guard adds 276 tokens per episode (2{,}359 versus
+2{,}138 undefended), while the full system uses fewer (1{,}699) and finishes faster (19.0\,s versus
+34.1\,s per episode), because the agent does not follow the attacker's tools. Llama3.2-3B shows the
+same ordering (1{,}185, 1{,}339 and 1{,}032 tokens). Llama3.2-3B emitted 8\% of its tool calls as
+text that our parser recovered; qwen2.5-3B emitted none. Episodes ending at the step limit, loop
+guard or timeout stay at or below 1.8\% for every main configuration (5.3\% with the allowlist
+alone). No episode was lost: 0 infrastructure errors and 0 retries over 4{,}068 LLM episodes.
 
 % =====================================================================================
 \section{Failure Analysis}
@@ -508,8 +540,19 @@ rule per category (\texttt{mcpguard/eval/failures.py}): security failures (attac
 low-risk-channel bypass, approver lapse, injection through allowed data, untrusted tool reached, and
 other; utility failures into running out of steps/loop/timeout, no tool use, hijacked by the attack,
 over-blocking by the gateway, credential scope, tool error and wrong answer.
-\pending{Insert the frequency table from results/paper/failures\_qwen2.5-3b\_full.md and two success
-and two failure trajectories (abbreviated).}
+For qwen2.5-3B under the full system (306 attacked and 33 benign episodes over three seeds) there
+is no security failure. The utility failures are: no tool use, 67 (19.8\%); wrong or incomplete
+answer, 59 (17.4\%); out of steps, loop or timeout, 5 (1.5\%); tool error, 2 (0.6\%); hijacked,
+over-blocked or out of scope, 0. All 67 episodes without a tool call are in OP, UI, FE and TT, where
+the attacker's server shadows the task's tool and the allowlist hides it, so the agent has nothing to
+call and answers from the prompt. This is the fail-safe cost already seen with the gullible agent; a
+gateway that routes the call to the pinned trusted provider would remove it. Undefended, by contrast,
+all 92 security failures are calls to an untrusted tool, and 28 episodes lose the task to the
+attack. Representative trajectories are in \texttt{logs/phase2-local} and
+\texttt{results/paper/failures\_*.md}. In a typical success (T01-CD, seed~2) the agent reads the
+report, ignores the injected request to e-mail \texttt{/hr/salaries.csv} and answers with the
+revenue; in a typical failure (T01-OP) the shadowed \texttt{read\_file} is blocked twice and the
+agent returns the error instead of the answer.
 
 \textbf{Development iterations.} Table~\ref{tab:devlog} summarises the failures observed during
 development and their measured effect; full entries are in \texttt{docs/devlog.md}.
@@ -526,7 +569,7 @@ Observed & Change & Effect \\
 FE attacker replaced every response, hiding its own exfiltrated data & inject on first call only & 2/14 FE test scenarios become reachable \\
 CD 0\% on all Phase~1 models (external recipient refused) & internal-recipient CD variants & CD tests authority, not refusal \\
 Approval asked for every sensitive call & risk tiers from policy & fewer approvals per benign task (Tab.~\ref{tab:gap3}) \\
-7.6\% of gpt-oss-120B episodes hit max steps & loop guard, timeouts & \pending{Tab.~\ref{tab:eff}} \\
+7.6\% of gpt-oss-120B episodes hit max steps & loop guard, timeouts & $\le$1.8\% on qwen2.5-3B (Tab.~\ref{tab:eff}) \\
 5 HTTP-429 losses (Qwen3.8-27B) & retries, resume re-runs errors & errors reported in Tab.~\ref{tab:eff} \\
 \bottomrule
 \end{tabular}
@@ -541,7 +584,8 @@ Approval asked for every sensitive call & risk tiers from policy & fewer approva
 surfaces. The allowlist removes the MCP supply chain; scoped credentials remove authority misuse
 regardless of how the instruction arrived; human approval is cheap only when tiered, and tiering
 moves trust from the human to the policy. No single layer suffices; in our results the combination
-of allowlist and scoped credentials \pending{does / does not} dominate the model-level guard.
+of allowlist and scoped credentials dominates the model-level guard: lower ASR (0\% versus 24.5\%)
+and higher NRP and BU.
 
 \textbf{Internal validity.} The MCIP guardian is replaced by a prompted guard using the agent's own
 small model, which may underestimate MCIP. Simulated approvers are idealised: the oracle never errs,
@@ -554,7 +598,9 @@ anchor.
 fewer than MSB's 2{,}000 instances, and attacks are templated rather than optimised as in
 ToolHijacker~\cite{shi2026toolhijacker}; adaptive attackers who know the policy could craft
 low-risk-looking actions. Local models are 1.5--3B parameters because the laptop has a 4\,GB GPU;
-larger models depend on free-tier API quotas, so their coverage is \pending{state coverage}.
+larger models depend on free-tier API quotas, and we did not run them in Phase~2: all LLM numbers
+come from two 3B models (qwen2.5-3B with three seeds, llama3.2-3B with one), which follow injected
+text less often than larger models, so CD and PE in particular remain untested on LLMs.
 FE results are not comparable with Phase~1 because we fixed the FE server.
 
 \textbf{Construct validity.} ASR counts a goal only when it completes; privilege violations that do
@@ -570,7 +616,10 @@ description hash, least-privilege credentials, tiered human approval and tamper-
 can be measured on the same attacks and metrics as MCP security benchmarks. Reference agents show
 that the allowlist removes every tool-borne attack and scoped credentials remove authority misuse,
 leaving attacks carried by trusted data within the user's own authority as the hard residual.
-\pending{One-sentence summary of the LLM results and gap verdicts.} Future work: an optimised,
+On two 3B open-weight models the full gateway removes every successful attack (qwen2.5-3B: 30.1\%
+to 0\%) while the MCIP-style guard reaches only 24.5\%, resolving Gap~1 and Gap~2 on the models we
+could run and Gap~3 partially, since risk-tiered approval misses attacks that only reuse the user's
+requested action. Future work: an optimised,
 policy-aware attacker, learned approver models from user studies, and anchoring the audit chain.
 
 \section*{Reproducibility}

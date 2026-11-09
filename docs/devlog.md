@@ -2,9 +2,8 @@
 
 Each entry records what failed or was missing, what we changed, and the measured effect.
 "Before" numbers come from the committed Phase 1 runs (`results/phase1-*`); "after" numbers
-come from the Phase 2 runs named in each entry. Entries marked **[pending]** need the
-listed LLM run to finish; fill them in from `results/paper/` after
-`python experiments/reproduce.py report`.
+come from the Phase 2 runs named in each entry. LLM numbers are taken from
+`results/paper/` (qwen2.5:3b with three seeds, llama3.2:3b with one seed; test split).
 
 | # | Date | Owner | Area |
 |---|---|---|---|
@@ -46,7 +45,8 @@ listed LLM run to finish; fill them in from `results/paper/` after
   `mail_contains` (any recipient). Attacked scenarios: 128 -> 140.
 - **Effect.** Reference agents: the compliant agent realises both variants (100% undefended).
   Risk-tiered approval cannot see them (internal e-mail = low risk), scoped credentials stop
-  them (see Table 4, `agent:gullible`). LLM success rate: **[pending: Table 4, phase2-local]**.
+  them (see Table 4, `agent:gullible`). LLM success rate: 0% on both 3B models even with the service token (Table 4); they rarely follow
+  injected text, so the class needs larger models to test H2.
 
 ### 3. Approving every sensitive call costs approvals on benign tasks
 
@@ -61,7 +61,8 @@ listed LLM run to finish; fill them in from `results/paper/` after
   task fall from 0.64 (`hitl-all`) to 0 (`hitl`). Cost: with the compliant agent, ASR rises from
   28.4% to 37.3% and the stop rate falls from 100% to 87.7%, entirely from the internal
   confused-deputy variants (CD ASR 6.7% -> 66.7%), which look low risk. Scoped credentials close
-  this gap (CD 0%). LLM numbers: **[pending: Table 5]**.
+  this gap (CD 0%). LLM numbers (qwen2.5:3b, Table 5): approvals per benign task 0.55 (`hitl-all`) -> 0 (`hitl`);
+  stop rate 100% / 92.3% / 63.6% (fatigue) / 36.4% (approve-all).
 
 ### 4. No held-out split and single-seed results
 
@@ -93,7 +94,9 @@ listed LLM run to finish; fill them in from `results/paper/` after
   the episode as `loop_break`. The runner wraps each episode in a timeout (`episode_timeout`) and
   keeps the partial trajectory.
 - **Effect.** Share of episodes ending at max_steps/loop/timeout per model and defense:
-  **[pending: Table 7, column "Max-steps/loop/timeout"]**.
+  at most 1.8% of episodes in every main configuration on qwen2.5:3b and llama3.2:3b (5.3% with the
+  allowlist alone), Table 7. Phase 1 numbers came from different (API) models, so this is not a
+  paired comparison.
 
 ### 7. Malformed tool calls reached the servers
 
@@ -102,7 +105,8 @@ listed LLM run to finish; fill them in from `results/paper/` after
 - **Change.** `defenses/gateway.py`: required arguments are checked against the tool's input
   schema before the call; the agent gets a message naming the missing argument so it can
   retry. `agent/mcp_hub.py`: every tool call has a 30 s timeout.
-- **Effect.** **[pending: count of "missing required argument" results in phase2-local traces]**.
+- **Effect.** The check fired in 23 of 4,068 LLM episodes (21 qwen2.5:3b, 2 llama3.2:3b); the agent
+  got a readable message instead of a server exception.
 
 ### 8. Rate limits and infrastructure errors lost episodes
 
@@ -124,7 +128,8 @@ listed LLM run to finish; fill them in from `results/paper/` after
 - **Observed limitation.** Under prevention (`hitl`), precision on *successful* attacks drops to
   37% because the detector also flags blocked attempts (rule POLICY_BLOCK). We keep this: for a
   security team an attempted attack is worth an alert. Table 5b therefore reports recall on all
-  attacked episodes as well. LLM false-positive rate: **[pending: Table 5b]**.
+  attacked episodes as well. LLM false-positive rate: 0% on benign episodes for both models; recall on successful attacks
+  100%, precision 53.5% (qwen2.5:3b) and 38.8% (llama3.2:3b).
 - **Known limitation.** The hash chain detects edits and re-ordering but not truncation of
   the tail of the log (`tests/test_detector.py::test_tampering_is_detected`). An external
   anchor (e.g. periodically publishing the head hash) would close this.

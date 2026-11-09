@@ -1,0 +1,21 @@
+\begin{tabular}{llllllllll}
+\toprule
+Model & Defense & Seeds & Attacked eps/seed & BU & ASR & PUA & NRP & PVR & ASR 95\% CI \\
+\midrule
+gullible & B0 none & 1 & 102 & 100.0 & 100.0 & 92.2 & 0.0 & 72.5 & [100.0, 100.0] \\
+gullible & allowlist + scoped & 1 & 102 & 100.0 & 0.0 & 58.8 & 58.8 & 0.0 & [0.0, 0.0] \\
+gullible & proposed (full) & 1 & 102 & 100.0 & 0.0 & 58.8 & 58.8 & 0.0 & [0.0, 0.0] \\
+ideal & B0 none & 1 & 102 & 100.0 & 6.9 & 87.3 & 81.3 & 0.0 & [2.0, 11.8] \\
+ideal & allowlist + scoped & 1 & 102 & 100.0 & 0.0 & 58.8 & 58.8 & 0.0 & [0.0, 0.0] \\
+ideal & proposed (full) & 1 & 102 & 100.0 & 0.0 & 58.8 & 58.8 & 0.0 & [0.0, 0.0] \\
+llama3.2:3b & B0 none & 1 & 102 & 72.7 & 18.6 & 54.9 & 44.7 & 1.0 & [10.8, 26.5] \\
+llama3.2:3b & B1 safety prompt & 1 & 102 & 72.7 & 21.6 & 47.1 & 36.9 & 0.0 & [13.7, 29.4] \\
+llama3.2:3b & B2 MCIP-style guard & 1 & 102 & 72.7 & 12.7 & 38.2 & 33.4 & 1.0 & [6.9, 19.6] \\
+llama3.2:3b & proposed (full) & 1 & 102 & 72.7 & 0.0 & 51.0 & 51.0 & 0.0 & [0.0, 0.0] \\
+qwen2.5:3b & B0 none & 3 & 102 & 78.8 $\pm$ 5.2 & 30.1 $\pm$ 1.5 & 66.7 $\pm$ 2.6 & 46.6 $\pm$ 2.5 & 12.4 $\pm$ 1.5 & [24.8, 35.3] \\
+qwen2.5:3b & B1 safety prompt & 3 & 102 & 81.8 $\pm$ 9.1 & 29.7 $\pm$ 2.8 & 61.4 $\pm$ 3.4 & 43.1 $\pm$ 1.1 & 7.8 $\pm$ 2.6 & [24.5, 35.0] \\
+qwen2.5:3b & B2 MCIP-style guard & 3 & 102 & 84.8 $\pm$ 5.2 & 24.5 $\pm$ 0.0 & 62.4 $\pm$ 2.0 & 47.1 $\pm$ 1.5 & 1.0 $\pm$ 0.0 & [19.6, 29.4] \\
+qwen2.5:3b & allowlist + scoped & 3 & 102 & 93.9 $\pm$ 10.5 & 0.0 $\pm$ 0.0 & 57.5 $\pm$ 6.7 & 57.5 $\pm$ 6.7 & 0.0 $\pm$ 0.0 & [0.0, 0.0] \\
+qwen2.5:3b & proposed (full) & 3 & 102 & 90.9 $\pm$ 9.1 & 0.0 $\pm$ 0.0 & 57.5 $\pm$ 6.7 & 57.5 $\pm$ 6.7 & 0.0 $\pm$ 0.0 & [0.0, 0.0] \\
+\bottomrule
+\end{tabular}

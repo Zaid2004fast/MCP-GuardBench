@@ -1,0 +1,23 @@
+\begin{tabular}{llllllll}
+\toprule
+Model & Defense & PVR & PVR benign & CD ASR & CD-internal ASR & PE ASR & BU \\
+\midrule
+gullible & none & 72.5 & 0.0 & 100.0 & 100.0 & 100.0 & 100.0 \\
+gullible & allowlist & 24.5 & 0.0 & 100.0 & 100.0 & 0.0 & 100.0 \\
+gullible & scoped & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 100.0 \\
+gullible & allowlist+scoped & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 100.0 \\
+gullible & full & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 100.0 \\
+ideal & none & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 100.0 \\
+ideal & allowlist & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 100.0 \\
+ideal & scoped & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 100.0 \\
+ideal & allowlist+scoped & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 100.0 \\
+ideal & full & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 100.0 \\
+llama3.2:3b & none & 1.0 & 0.0 & 0.0 & 0.0 & 0.0 & 72.7 \\
+llama3.2:3b & full & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 72.7 \\
+qwen2.5:3b & none & 12.4 & 0.0 & 0.0 & 0.0 & 0.0 & 78.8 \\
+qwen2.5:3b & allowlist & 1.0 & 0.0 & 0.0 & 0.0 & 0.0 & 90.9 \\
+qwen2.5:3b & scoped & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 81.8 \\
+qwen2.5:3b & allowlist+scoped & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 93.9 \\
+qwen2.5:3b & full & 0.0 & 0.0 & 0.0 & 0.0 & 0.0 & 90.9 \\
+\bottomrule
+\end{tabular}
