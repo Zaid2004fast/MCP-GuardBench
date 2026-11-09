@@ -50,11 +50,16 @@ LABELS = {"none": "B0 none", "safety_prompt": "B1 safety prompt", "llm_guard": "
 # ------------------------------------------------------------------------- output
 
 
-def _latex(df: pd.DataFrame) -> str:
-    cols = "l" * len(df.columns)
+# Wrapped columns for the text-heavy gap-resolution table, so it stays readable at full
+# text width instead of being shrunk by adjustbox (widths sum to ~\textwidth at 4pt tabcolsep).
+GAP_COLSPEC = "".join(r">{\raggedright\arraybackslash}p{%scm}" % w for w in (2.3, 3.0, 2.4, 2.6, 5.0, 1.4))
+
+
+def _latex(df: pd.DataFrame, colspec: str | None = None) -> str:
+    cols = colspec or "l" * len(df.columns)
     esc = lambda v: (str(v).replace("±", r"$\pm$").replace("%", r"\%").replace("_", r"\_")
                      .replace("&", r"\&").replace("–", "--").replace("≥", r"$\geq$").replace("≤", r"$\leq$")
-                     .replace("→", r"$\rightarrow$"))
+                     .replace("→", r"$\rightarrow$").replace("Δ", r"$\Delta$"))
     lines = [rf"\begin{{tabular}}{{{cols}}}", r"\toprule", " & ".join(esc(c) for c in df.columns) + r" \\",
              r"\midrule"]
     lines += [" & ".join(esc(v) for v in row) + r" \\" for row in df.itertuples(index=False)]
@@ -62,9 +67,9 @@ def _latex(df: pd.DataFrame) -> str:
     return "\n".join(lines) + "\n"
 
 
-def save_table(df: pd.DataFrame, out: Path, name: str, title: str) -> str:
+def save_table(df: pd.DataFrame, out: Path, name: str, title: str, colspec: str | None = None) -> str:
     df.to_csv(out / f"{name}.csv", index=False)
-    (out / f"{name}.tex").write_text(_latex(df), encoding="utf-8")
+    (out / f"{name}.tex").write_text(_latex(df, colspec), encoding="utf-8")
     md = f"### {title}\n\n" + (df.to_markdown(index=False) if len(df) else "_no data yet_") + "\n"
     (out / f"{name}.md").write_text(md, encoding="utf-8")
     return md
@@ -477,7 +482,7 @@ def build(runs: list[Path], out: Path, split: str = "test") -> str:
     parts.append(save_table(table_efficiency(df), out, "t7_efficiency", "Table 7 – E6 efficiency and reliability"))
     parts.append(save_table(table_msb(df), out, "t8_msb", "Table 8 – E2 comparison with the base paper (MSB)"))
     gr, notes = gap_resolution(df)
-    parts.append(save_table(gr, out, "gap_resolution", "Gap-resolution table"))
+    parts.append(save_table(gr, out, "gap_resolution", "Gap-resolution table", colspec=GAP_COLSPEC))
     if notes:
         parts.append("Notes:\n" + "\n".join(f"- {n}" for n in notes) + "\n")
     for fn in (fig_asr_by_class, fig_security_utility, fig_ablation, fig_oversight):

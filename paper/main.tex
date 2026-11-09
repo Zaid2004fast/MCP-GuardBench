@@ -5,6 +5,7 @@
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{xcolor}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
@@ -476,7 +477,7 @@ success criteria to the models with benign utility of at least 50\%.
 \centering
 \caption{Gap-resolution table (test split). Verdicts apply the Phase~1 success criteria.}
 \label{tab:gapres}
-\begin{adjustbox}{max width=\textwidth}\gen{gap_resolution}\end{adjustbox}
+{\footnotesize\setlength{\tabcolsep}{4pt}\gen{gap_resolution}}
 \end{table*}
 
 % =====================================================================================
