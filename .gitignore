@@ -22,3 +22,4 @@ paper/*.blg
 results/demo/
 results/smoke/
 results/_*/
+*.bak

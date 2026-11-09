@@ -1,4 +1,4 @@
-# Additional local open-weight models (one seed) for the main comparisons, so claims do
+# Second local open-weight model (one seed) for the main comparisons, so claims do
 # not rest on a single model. Same run folder as the primary model.
 run_name: phase2-local
 split: test
@@ -7,6 +7,6 @@ max_steps: 8
 concurrency: 2
 episode_timeout: 900
 retries: 2
-models: [ollama:llama3.2:3b, ollama:qwen2.5:1.5b]
+models: [ollama:llama3.2:3b]
 seeds: [0]
-defenses: [none, safety_prompt, llm_guard, allowlist+scoped, scoped, hitl, full]
+defenses: [none, safety_prompt, llm_guard, full]   # B0, B1, B2 and the proposed system
