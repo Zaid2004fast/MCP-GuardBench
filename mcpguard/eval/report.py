@@ -263,8 +263,12 @@ def gap_resolution(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
             g1_nrp.append(a["NRP"] > g["NRP"])
         ours.append(f"{short_model(m)}: ASR {fmt(n['ASR'])}→{fmt(a['ASR'])}, NRP {fmt(a['NRP'])}"
                     + (f" vs guard {fmt(g['NRP'])}" if g is not None else ""))
-    need = min(3, len(g1_nrp)) if g1_nrp else 0
-    flags = ([sum(g1_nrp) >= need] if g1_nrp else []) + ([all(g1_asr)] if g1_asr else [])
+    # Phase 1 criterion: higher NRP than the guard on at least 3 (of 4) eligible models. With
+    # fewer eligible models the criterion is not met, so Gap 1 can be at most Partially addressed.
+    flags = ([sum(g1_nrp) >= 3] if g1_nrp else []) + ([all(g1_asr)] if g1_asr else [])
+    if g1_nrp and len(g1_nrp) < 3:
+        notes.append(f"Gap 1: only {len(g1_nrp)} eligible model(s) ran both allowlist+scoped and the guard; "
+                     "the Phase 1 criterion needs 3 of 4 models, so it counts as not met.")
     rows.append({"Gap": "Gap 1 – system-level mitigations unmeasured",
                  "Method / component": "Pinned tool allowlist + scoped credentials (gateway)",
                  "Metric": "ASR, NRP vs MCIP-style guard",
